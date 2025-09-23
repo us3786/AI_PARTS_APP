@@ -484,57 +484,70 @@ function calculateMarketAnalysis(researchResults: any[]) {
 
 // Save price research data to database
 async function savePriceResearch(partId: string, researchResults: any[], marketAnalysis: any, partName?: string, category?: string, subCategory?: string, make?: string, model?: string, year?: number, trimLevel?: string, engineSize?: string, driveType?: string) {
-  const savedResearch = []
+  try {
+    // First, deactivate any existing research for this part
+    await prisma.priceResearch.updateMany({
+      where: {
+        partsMasterId: partId,
+        isActive: true
+      },
+      data: {
+        isActive: false
+      }
+    })
 
-  for (const result of researchResults) {
-    try {
-      const priceResearch = await prisma.priceResearch.create({
-        data: {
-          partsMasterId: partId,
-          partName: partName || 'Unknown Part',
-          category: category || 'General',
-          subCategory: subCategory || null,
-          make: make || null,
-          model: model || null,
-          year: year || null,
-          source: result.source,
-          price: result.price,
-          currency: 'USD',
-          url: result.url,
-          images: result.images,
-          marketTrend: marketAnalysis.marketTrend || 'stable',
-          confidence: marketAnalysis.confidence || 50,
-          sources: researchResults.length,
-          averagePrice: marketAnalysis.averagePrice || result.price,
-          minPrice: marketAnalysis.minPrice || result.price,
-          maxPrice: marketAnalysis.maxPrice || result.price,
-          medianPrice: marketAnalysis.medianPrice || result.price,
-          marketAnalysis: {
-            ...marketAnalysis,
-            vehicleDetails: {
-              trimLevel: trimLevel || null,
-              engineSize: engineSize || null,
-              driveType: driveType || null
-            },
-            competitorAnalysis: {
-              title: result.title,
-              condition: result.condition,
-              location: result.location,
-              shipping: result.shipping,
-              searchQuery: result.searchQuery
-            }
+    // Create a single comprehensive research record with all sources aggregated
+    const priceResearch = await prisma.priceResearch.create({
+      data: {
+        partsMasterId: partId,
+        partName: partName || 'Unknown Part',
+        category: category || 'General',
+        subCategory: subCategory || null,
+        make: make || null,
+        model: model || null,
+        year: year || null,
+        source: 'Multi-Source Research', // Single source identifier
+        price: marketAnalysis.averagePrice || 0,
+        currency: 'USD',
+        url: '', // No single URL since we have multiple sources
+        images: [], // Images will be handled separately by image hunting
+        marketTrend: marketAnalysis.marketTrend || 'stable',
+        confidence: marketAnalysis.confidence || 50,
+        sources: researchResults.length,
+        averagePrice: marketAnalysis.averagePrice || 0,
+        minPrice: marketAnalysis.minPrice || 0,
+        maxPrice: marketAnalysis.maxPrice || 0,
+        medianPrice: marketAnalysis.medianPrice || marketAnalysis.averagePrice || 0,
+        marketAnalysis: {
+          ...marketAnalysis,
+          vehicleDetails: {
+            trimLevel: trimLevel || null,
+            engineSize: engineSize || null,
+            driveType: driveType || null
           },
-          researchDate: new Date(),
-          isActive: true
-        }
-      })
-      savedResearch.push(priceResearch)
-    } catch (error) {
-      console.error('Error saving price research:', error)
-    }
-  }
+          allSources: researchResults.map(result => ({
+            source: result.source,
+            price: result.price,
+            url: result.url,
+            title: result.title,
+            condition: result.condition,
+            location: result.location,
+            shipping: result.shipping,
+            searchQuery: result.searchQuery
+          })),
+          referenceListings: marketAnalysis.referenceListings || []
+        },
+        researchDate: new Date(),
+        isActive: true
+      }
+    })
 
-  return savedResearch
+    console.log(`✅ Saved single research record for ${partName} with ${researchResults.length} sources`)
+    return [priceResearch]
+  } catch (error) {
+    console.error('Error saving price research:', error)
+    return []
+  }
 }
 
 export async function GET(request: NextRequest) {

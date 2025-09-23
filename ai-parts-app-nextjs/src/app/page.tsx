@@ -10,6 +10,8 @@ import { ListingPerformanceDashboard } from '@/components/dashboard/ListingPerfo
 import { EbayListingPreview } from '@/components/dashboard/EbayListingPreview'
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard'
 import { VehicleManagement } from '@/components/dashboard/VehicleManagement'
+import { VehiclePhotosDashboard } from '@/components/dashboard/VehiclePhotosDashboard'
+import { ImageManagementDashboard } from '@/components/dashboard/ImageManagementDashboard'
 import { SectionNavigation } from '@/components/navigation/SectionNavigation'
 import { Vehicle } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,25 +69,9 @@ export default function Home() {
         console.warn('⚠️ Parts population failed:', populateData.message)
       }
       
-      // Step 2: Run bulk price research
-      setSetupProgress('Running price research and image hunting...')
-      console.log('💰 Starting bulk price research...')
-      const researchResponse = await fetch('/api/price-research/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicleId: decodedVehicle.id,
-          partIds: [] // Empty array means research all parts
-        }),
-        signal: controller.signal
-      })
-      
-      const researchData = await researchResponse.json()
-      if (researchData.success) {
-        console.log(`✅ Price research completed: ${researchData.successful} successful, ${researchData.failed} failed`)
-      } else {
-        console.warn('⚠️ Price research failed:', researchData.message)
-      }
+      // Step 2: Skip automatic price research - let user trigger manually
+      setSetupProgress('Vehicle setup complete! Use Price Research button to analyze pricing.')
+      console.log('✅ Vehicle setup complete - price research available via manual button')
       
       setSetupProgress('Setup completed!')
       setSetupComplete(true)
@@ -117,90 +103,8 @@ export default function Home() {
 
   const handleVehicleSelected = async (selectedVehicle: Vehicle) => {
     setVehicle(selectedVehicle)
-    setIsSettingUp(true)
-    
-    // Create abort controller for this setup process
-    const controller = new AbortController()
-    setAbortController(controller)
-    
-    // Automatically populate parts and run price research
-    try {
-      console.log(`🚗 Vehicle selected: ${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model}`)
-      
-      // Step 1: Populate parts inventory
-      setSetupProgress('Populating parts inventory...')
-      console.log('📦 Auto-populating parts inventory...')
-      const populateResponse = await fetch('/api/parts/populate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicleId: selectedVehicle.id,
-          selectedCategories: [] // Populate all categories
-        }),
-        signal: controller.signal
-      })
-      
-      if (!populateResponse.ok) {
-        throw new Error(`Parts population failed: ${populateResponse.status} ${populateResponse.statusText}`)
-      }
-      
-      const populateData = await populateResponse.json()
-      if (populateData.success) {
-        console.log(`✅ Parts populated: ${populateData.createdCount} new parts added`)
-      } else {
-        console.warn('⚠️ Parts population failed:', populateData.message)
-      }
-      
-      // Step 2: Run bulk price research
-      setSetupProgress('Running price research and image hunting...')
-      console.log('💰 Starting bulk price research...')
-      const researchResponse = await fetch('/api/price-research/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicleId: selectedVehicle.id,
-          partIds: [] // Empty array means research all parts
-        }),
-        signal: controller.signal
-      })
-      
-      if (!researchResponse.ok) {
-        throw new Error(`Price research failed: ${researchResponse.status} ${researchResponse.statusText}`)
-      }
-      
-      const researchData = await researchResponse.json()
-      if (researchData.success) {
-        console.log(`✅ Price research completed: ${researchData.successful} successful, ${researchData.failed} failed`)
-      } else {
-        console.warn('⚠️ Price research failed:', researchData.message)
-      }
-      
-      setSetupProgress('Setup completed!')
-      setSetupComplete(true)
-      setSetupError(false)
-      console.log('🎉 Vehicle setup completed!')
-      
-    } catch (error) {
-      if (controller.signal.aborted) {
-        console.log('🛑 Setup cancelled by user')
-        setSetupProgress('Setup cancelled by user')
-        setSetupComplete(true)
-        setSetupError(true)
-      } else {
-        console.error('❌ Error during vehicle setup:', error)
-        setSetupProgress('Setup completed with some errors')
-        setSetupComplete(true)
-        setSetupError(true)
-      }
-    } finally {
-      setIsSettingUp(false)
-      setAbortController(null)
-      setTimeout(() => {
-        setSetupProgress('')
-        setSetupComplete(false)
-        setSetupError(false)
-      }, 5000) // Clear progress message after 5 seconds
-    }
+    console.log(`🚗 Vehicle selected: ${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model}`)
+    console.log('✅ Vehicle selected - no automatic setup needed')
   }
 
   return (
@@ -293,6 +197,12 @@ export default function Home() {
           <div className="max-w-7xl mx-auto space-y-8">
             <div id="parts-inventory" data-section="parts-inventory">
               <EnhancedPartsDashboard vehicleId={vehicle.id} />
+            </div>
+            <div id="vehicle-photos" data-section="vehicle-photos">
+              <VehiclePhotosDashboard vehicleId={vehicle.id} />
+            </div>
+            <div id="image-management" data-section="image-management">
+              <ImageManagementDashboard vehicleId={vehicle.id} />
             </div>
             <div id="price-research" data-section="price-research">
               <PriceResearchDashboard vehicleId={vehicle.id} />

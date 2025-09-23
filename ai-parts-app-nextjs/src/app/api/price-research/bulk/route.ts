@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
-    const { vehicleId, partIds } = await request.json()
+    const { vehicleId, partIds, forceRefresh = false } = await request.json()
     
     if (!vehicleId || !Array.isArray(partIds)) {
       return NextResponse.json(
@@ -47,11 +47,58 @@ export async function POST(request: NextRequest) {
 
     const results = []
     const errors = []
+    const cachedResults = []
+    let processedCount = 0
 
-    // Process each part individually
-    for (const part of parts) {
+    // Check for existing price research data if not forcing refresh
+    if (!forceRefresh) {
+      console.log('🔍 Checking for existing price research data...')
+      
+      for (const part of parts) {
+        const existingResearch = await prisma.priceResearch.findFirst({
+          where: {
+            partsMasterId: part.partsMasterId,
+            isActive: true
+          },
+          orderBy: { researchDate: 'desc' }
+        })
+
+        if (existingResearch) {
+          // Check if research is recent (within last 7 days)
+          const researchAge = Date.now() - new Date(existingResearch.researchDate).getTime()
+          const isRecent = researchAge < (7 * 24 * 60 * 60 * 1000) // 7 days
+          
+          if (isRecent) {
+            console.log(`✅ Using cached data for: ${part.partsMaster.partName}`)
+            cachedResults.push({
+              partId: part.partsMasterId,
+              partsInventoryId: part.id,
+              partsMasterId: part.partsMasterId,
+              partName: part.partsMaster.partName,
+              success: true,
+              cached: true,
+              marketAnalysis: existingResearch.marketAnalysis,
+              researchDate: existingResearch.researchDate
+            })
+            continue
+          } else {
+            console.log(`⏰ Research data is stale for: ${part.partsMaster.partName}, refreshing...`)
+          }
+        }
+      }
+    }
+
+    const partsToResearch = forceRefresh ? parts : parts.filter(part => 
+      !cachedResults.some(cached => cached.partsMasterId === part.partsMasterId)
+    )
+
+    console.log(`📊 Research summary: ${cachedResults.length} cached, ${partsToResearch.length} to research`)
+
+    // Process parts that need research
+    for (const part of partsToResearch) {
       try {
-        console.log(`Processing part: ${part.partsMaster.partName}`)
+        processedCount++
+        console.log(`Processing part ${processedCount}/${partsToResearch.length}: ${part.partsMaster.partName}`)
         
         // Call the individual price research API with trim level, engine size, and drive type
         const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/price-research`, {
@@ -80,6 +127,7 @@ export async function POST(request: NextRequest) {
             partsMasterId: part.partsMasterId,
             partName: part.partsMaster.partName,
             success: true,
+            cached: false,
             marketAnalysis: data.marketAnalysis,
             researchResults: data.researchResults
           })
@@ -100,14 +148,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Combine cached and new results
+    const allResults = [...cachedResults, ...results]
+
     return NextResponse.json({
       success: true,
-      message: `Bulk price research completed. ${results.length} successful, ${errors.length} failed.`,
-      results,
+      message: `Bulk price research completed. ${allResults.length} total results (${cachedResults.length} cached, ${results.length} new), ${errors.length} failed.`,
+      results: allResults,
+      cachedResults,
+      newResults: results,
       errors,
       totalProcessed: parts.length,
-      successful: results.length,
-      failed: errors.length
+      totalSuccessful: allResults.length,
+      cachedCount: cachedResults.length,
+      newCount: results.length,
+      failed: errors.length,
+      progress: {
+        total: parts.length,
+        processed: processedCount,
+        cached: cachedResults.length,
+        remaining: partsToResearch.length - processedCount
+      }
     })
 
   } catch (error) {

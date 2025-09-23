@@ -323,19 +323,29 @@ export async function searchEbayParts(partNumber: string, accessToken: string): 
 
 // Generate eBay OAuth URL
 export function generateEbayAuthUrl(): string {
-  // Use environment variable or fallback to ngrok URL
-  const redirectUri = 'http://localhost:3000/api/ebay/callback'
+  // Get eBay credentials from environment
+  const clientId = process.env.EBAY_CLIENT_ID
+  const clientSecret = process.env.EBAY_CLIENT_SECRET
+  
+  // Validate credentials are present
+  if (!clientId || !clientSecret) {
+    throw new Error('eBay credentials not configured. Please check your .env.local file has EBAY_CLIENT_ID and EBAY_CLIENT_SECRET')
+  }
+  
+  // Use environment variable or fallback to localhost
+  const redirectUri = process.env.EBAY_REDIRECT_URI || 'http://localhost:3000/api/ebay/callback'
   
   const params = new URLSearchParams({
-    const clientId = process.env.EBAY_CLIENT_ID as string;,
+    client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account https://api.ebay.com/oauth/api_scope/sell.fulfillment https://api.ebay.com/oauth/api_scope/sell.marketing',
+    scope: process.env.EBAY_SCOPES || 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account https://api.ebay.com/oauth/api_scope/sell.fulfillment https://api.ebay.com/oauth/api_scope/sell.marketing',
     state: 'ebay_oauth_state'
   })
   
   const authUrl = `https://auth.ebay.com/oauth2/authorize?${params.toString()}`
   console.log('Generated eBay OAuth URL:', authUrl)
   console.log('Using redirect URI:', redirectUri)
+  console.log('Using Client ID:', clientId)
   return authUrl
 }

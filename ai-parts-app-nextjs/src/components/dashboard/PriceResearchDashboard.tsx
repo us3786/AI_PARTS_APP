@@ -53,6 +53,7 @@ interface PriceResearchResult {
   success: boolean
   sources: number
   category?: string
+  cached?: boolean
   marketAnalysis: {
     averagePrice: number
     minPrice: number
@@ -112,11 +113,13 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
   const [summary, setSummary] = useState<ResearchSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [progressDetails, setProgressDetails] = useState<{current: number, total: number, cached: number}>({current: 0, total: 0, cached: 0})
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [availableCategories, setAvailableCategories] = useState<string[]>([])
   const [currentOperation, setCurrentOperation] = useState<string>('')
   const [viewingPriceDetails, setViewingPriceDetails] = useState<PriceResearchResult | null>(null)
   const [viewingSettings, setViewingSettings] = useState<PriceResearchResult | null>(null)
+  const [forceRefresh, setForceRefresh] = useState(false)
   const [viewingHistory, setViewingHistory] = useState(false)
   const [priceHistory, setPriceHistory] = useState<any[]>([])
   const [imageHuntingCancelled, setImageHuntingCancelled] = useState(false)
@@ -166,7 +169,7 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
             marketTrend: item.marketTrend || 'stable',
             confidence: item.confidence || 75,
             sourceCount: item.sources || 1,
-            referenceListings: [],
+            referenceListings: item.marketAnalysis?.referenceListings || item.marketAnalysis?.allSources || [],
             anomalyDetected: false,
             priceEvaluation: item.marketAnalysis || {}
           },
@@ -190,10 +193,26 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         setResearchResults(results)
         setSummary(summary)
 
-        // Load images for all parts
-        for (const result of results) {
-          await fetchPartImages(result.partId)
+        // Automatically fetch images for all parts with existing research data (with rate limiting)
+        console.log(`🖼️ Auto-fetching images for ${results.length} parts (rate limited)...`)
+        
+        // Rate limit: fetch images in batches of 10 with 100ms delay between batches
+        const batchSize = 10
+        const delay = 100
+        
+        for (let i = 0; i < results.length; i += batchSize) {
+          const batch = results.slice(i, i + batchSize)
+          
+          setTimeout(() => {
+            batch.forEach((result: any) => {
+              if (result.success) {
+                fetchPartImages(result.partId)
+              }
+            })
+          }, (i / batchSize) * delay)
         }
+        
+        console.log('✅ Loaded existing research data and started rate-limited image fetching')
       }
     } catch (error) {
       console.error('Error loading existing research data:', error)
@@ -229,6 +248,7 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         console.log('✅ Images loaded for partId', partId, ':', data.images.length, 'images')
       } else {
         console.log('⚠️ No images found for partId', partId, 'Response:', data)
+        // Don't show error messages for missing parts - this is normal for new parts
       }
     } catch (error) {
       console.error('❌ Error fetching part images:', error)
@@ -238,147 +258,92 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
   const startPriceResearch = async () => {
     setLoading(true)
     setProgress(0)
+    setProgressDetails({current: 0, total: 0, cached: 0})
     setResearchResults([])
     setCurrentOperation('Starting price research...')
 
     try {
-      // Get all parts for the vehicle
-      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error('Failed to fetch parts')
-      }
-
-      const allParts = data.inventory || []
-      const partsToResearch = selectedCategories.length > 0
-        ? allParts.filter((part: any) => selectedCategories.includes(part.partsMaster.category))
-        : allParts
-
-      if (partsToResearch.length === 0) {
-        setCurrentOperation('No parts found to research')
-        setLoading(false)
-        return
-      }
-
-      setCurrentOperation(`Researching prices for ${partsToResearch.length} parts...`)
-
-      // Process parts in batches for better performance
-      const batchSize = 5
-      const results = []
-      let processedCount = 0
-
-      for (let i = 0; i < partsToResearch.length; i += batchSize) {
-        const batch = partsToResearch.slice(i, i + batchSize)
-        
-        const batchPromises = batch.map(async (part: any) => {
-          try {
-            // Get vehicle information for more accurate search
-            const vehicleResponse = await fetch(`/api/vehicles/${vehicleId}`)
-            const vehicleData = await vehicleResponse.json()
-            const vehicleInfo = vehicleData.vehicle ? {
-              year: vehicleData.vehicle.year,
-              make: vehicleData.vehicle.make,
-              model: vehicleData.vehicle.model
-            } : null
-
-            // Call the price evaluation API for each part
-            const evaluationResponse = await fetch('/api/price-research/evaluate', {
+      // Use the new bulk price research API with smart caching
+      const response = await fetch('/api/price-research/bulk', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                partName: part.partsMaster.partName,
-                category: part.partsMaster.category,
-                currentPrice: part.currentValue || part.partsMaster.estimatedValue || 0,
-                vehicleInfo
-              })
-            })
-
-            const evaluationData = await evaluationResponse.json()
-            
-            if (evaluationData.success) {
-              const priceEvaluation = evaluationData.priceEvaluation
-              const referenceListings = evaluationData.referenceListings || []
-              
-              return {
-                partId: part.id,
-                partName: part.partsMaster.partName,
-                success: true,
-                sources: referenceListings.length,
-                marketAnalysis: {
-                  averagePrice: priceEvaluation.finalMean || part.currentValue || 0,
-                  minPrice: priceEvaluation.minPrice || part.currentValue || 0,
-                  maxPrice: priceEvaluation.maxPrice || part.currentValue || 0,
-                  recommendedPrice: priceEvaluation.finalMean || part.currentValue || 0,
-                  marketTrend: priceEvaluation.marketTrend || 'stable',
-                  confidence: priceEvaluation.confidence || 75,
-                  sourceCount: referenceListings.length,
-                  referenceListings: referenceListings,
-                  anomalyDetected: priceEvaluation.anomalyDetected || false,
-                  priceEvaluation: priceEvaluation
-                },
-                recommendedPrice: priceEvaluation.finalMean || part.currentValue || 0
-              }
-            } else {
-              return {
-                partId: part.id,
-                partName: part.partsMaster.partName,
-                success: false,
-                error: evaluationData.message || 'Research failed'
-              }
-            }
-          } catch (error) {
-            return {
-              partId: part.id,
-              partName: part.partsMaster.partName,
-              success: false,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
+          vehicleId: vehicleId,
+          partIds: [], // Empty array means research all parts
+          forceRefresh: forceRefresh
         })
+      })
 
-        const batchResults = await Promise.all(batchPromises)
-        results.push(...batchResults)
-        
-        processedCount += batch.length
-        const progress = Math.round((processedCount / partsToResearch.length) * 100)
-        setProgress(progress)
-        setCurrentOperation(`Processed ${processedCount}/${partsToResearch.length} parts...`)
-
-        // Small delay between batches
-        if (i + batchSize < partsToResearch.length) {
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to complete price research')
       }
 
-      // Calculate summary
-      const successfulResults = results.filter(r => r.success)
-      const totalSources = successfulResults.reduce((sum, r) => sum + (r.sources || 0), 0)
-      const totalValue = successfulResults.reduce((sum, r) => sum + (r.marketAnalysis?.averagePrice || 0), 0)
+      const { results, cachedResults, newResults, errors, progress: progressData } = data
+      
+      // Update progress details
+      setProgressDetails({
+        current: progressData.processed,
+        total: progressData.total,
+        cached: progressData.cached
+      })
 
-      const summary = {
+      setCurrentOperation(`Research completed! ${cachedResults.length} cached, ${newResults.length} new, ${errors.length} failed`)
+
+      // Convert API results to component format
+      const formattedResults: PriceResearchResult[] = results.map((result: any) => {
+        console.log('🔍 Debug - Result data for', result.partName, ':', {
+          marketAnalysis: result.marketAnalysis,
+          referenceListings: result.marketAnalysis?.referenceListings,
+          referenceListingsLength: result.marketAnalysis?.referenceListings?.length || 0
+        })
+        
+        return {
+          partId: result.partId,
+          partName: result.partName,
+          success: result.success,
+          cached: result.cached || false,
+          sources: result.marketAnalysis?.sourceCount || 0,
+          category: result.marketAnalysis?.category,
+          marketAnalysis: result.marketAnalysis,
+          researchDate: result.researchDate
+        }
+      })
+
+      const successfulResults = formattedResults.filter(r => r.success)
+      const failedResults = formattedResults.filter(r => !r.success)
+
+      // Calculate summary
+      const totalValue = successfulResults.reduce((sum, result) => {
+        return sum + (result.marketAnalysis?.averagePrice || 0)
+      }, 0)
+
+        const summary: ResearchSummary = {
         totalParts: results.length,
         successfulParts: successfulResults.length,
-        failedParts: results.length - successfulResults.length,
-        totalSources: totalSources,
-        averageSources: successfulResults.length > 0 ? Math.round(totalSources / successfulResults.length) : 0,
+          failedParts: failedResults.length,
+          totalSources: results.reduce((sum: number, r: any) => sum + (r.sources || 0), 0),
+          averageSources: results.length > 0 ? Math.round(results.reduce((sum: number, r: any) => sum + (r.sources || 0), 0) / results.length) : 0,
         averagePrice: successfulResults.length > 0 ? Math.round(totalValue / successfulResults.length) : 0,
         totalValue: Math.round(totalValue)
       }
 
-      setResearchResults(results)
+      setResearchResults(formattedResults)
       setSummary(summary)
       setProgress(100)
-      setCurrentOperation(`Price research completed! Found data for ${successfulResults.length} parts`)
-
-      // Automatically fetch images for successful results
-      setCurrentOperation('Fetching images for researched parts...')
-      for (const result of successfulResults) {
-        if (result.success) {
-          await fetchPartImages(result.partId)
-          // Small delay to avoid overwhelming the server
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
+      
+      // Show detailed completion message
+      const cachedCount = cachedResults.length
+      const newCount = newResults.length
+      const failedCount = errors.length
+      
+      if (cachedCount > 0 && newCount > 0) {
+        setCurrentOperation(`✅ Complete! ${cachedCount} from cache, ${newCount} researched, ${failedCount} failed`)
+      } else if (cachedCount > 0) {
+        setCurrentOperation(`✅ Complete! All ${cachedCount} parts loaded from cache`)
+      } else {
+        setCurrentOperation(`✅ Complete! ${newCount} parts researched, ${failedCount} failed`)
       }
 
     } catch (error) {
@@ -598,31 +563,66 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         return
       }
 
-      // Update each part individually with its specific price
-      const updatePromises = researchResults.map(async (result) => {
-        const price = result.recommendedPrice || result.marketAnalysis.averagePrice || 0
-        const response = await fetch('/api/parts/bulk-operations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            operation: 'update',
-            partIds: [result.partId],
-            vehicleId: vehicleId,
-            additionalData: {
-              currentValue: price
-            }
-          })
-        })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        return response.json()
-      })
+      console.log(`🔄 Starting bulk price sync for ${researchResults.length} parts...`)
 
-      const results = await Promise.all(updatePromises)
-      const successCount = results.filter(r => r.success).length
+      // Batch the updates to prevent resource exhaustion
+      const batchSize = 50 // Process 50 parts at a time
+      const batches = []
+      
+      for (let i = 0; i < researchResults.length; i += batchSize) {
+        const batch = researchResults.slice(i, i + batchSize)
+        batches.push(batch)
+      }
+
+      let totalSuccessCount = 0
+      let totalErrorCount = 0
+
+      // Process batches sequentially to avoid overwhelming the server
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex]
+        console.log(`📦 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} parts)...`)
+
+        // Process each part in the batch individually (but with rate limiting)
+        const batchPromises = batch.map(async (result) => {
+          const price = result.recommendedPrice || result.marketAnalysis.averagePrice || 0
+          const response = await fetch('/api/parts/bulk-operations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'update',
+              partIds: [result.partId],
+              vehicleId: vehicleId,
+              additionalData: {
+                currentValue: price
+              }
+            })
+          })
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          
+          return response.json()
+        })
+
+        try {
+          const batchResults = await Promise.all(batchPromises)
+          const batchSuccessCount = batchResults.filter(r => r.success).length
+          totalSuccessCount += batchSuccessCount
+          totalErrorCount += (batch.length - batchSuccessCount)
+          console.log(`✅ Batch ${batchIndex + 1} completed: ${batchSuccessCount}/${batch.length} parts updated`)
+        } catch (error) {
+          console.error(`❌ Batch ${batchIndex + 1} error:`, error)
+          totalErrorCount += batch.length
+        }
+
+        // Small delay between batches to prevent overwhelming the server
+        if (batchIndex < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+
+      const successCount = totalSuccessCount
       
       if (successCount > 0) {
         alert(`Successfully synced prices for ${successCount} out of ${researchResults.length} parts to inventory`)
@@ -697,6 +697,22 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
             </Button>
             
             <Button
+              onClick={() => setForceRefresh(!forceRefresh)}
+              disabled={loading}
+              variant={forceRefresh ? "default" : "outline"}
+              className={`px-4 py-3 font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 transition-all duration-300 ${
+                forceRefresh 
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                  : 'border-2 border-orange-500 text-orange-600 hover:bg-orange-50'
+              }`}
+            >
+              <RefreshCw className={`h-5 w-5 mr-2 ${forceRefresh ? 'animate-spin' : ''}`} />
+              <span className="text-lg">
+                {forceRefresh ? '🔄 Force Refresh' : '💾 Use Cache'}
+              </span>
+            </Button>
+            
+            <Button
               onClick={loading && currentOperation.includes('hunting') ? cancelImageHunting : startImageHunting}
               disabled={loading && !currentOperation.includes('hunting')}
               variant="outline"
@@ -764,9 +780,20 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>{currentOperation}</span>
-                <span>{Math.round(progress)}%</span>
+                <span>
+                  {progressDetails.total > 0 ? (
+                    `${progressDetails.current}/${progressDetails.total} parts`
+                  ) : (
+                    `${Math.round(progress)}%`
+                  )}
+                </span>
               </div>
               <Progress value={progress} className="w-full" />
+              {progressDetails.cached > 0 && (
+                <div className="text-xs text-green-600">
+                  📦 {progressDetails.cached} parts loaded from cache
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -930,8 +957,8 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                             // Then try reference listings image
                             const referenceImage = result.marketAnalysis.referenceListings?.[0]?.imageUrl
                             
-                            // Debug logging (simplified)
-                            if (partImagesList.length > 0) {
+                            // Debug logging (reduced to prevent performance issues)
+                            if (partImagesList.length > 0 && Math.random() < 0.01) { // Only log 1% of the time
                               console.log('Found images for partId', result.partId, ':', partImagesList.length, 'images')
                             }
                             
@@ -943,12 +970,20 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                                 <img 
                                   src={imageUrl} 
                                   alt={result.partName}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => {
+                                    // Navigate to vehicle photos section for multi-image view
+                                    const vehiclePhotosSection = document.getElementById('vehicle-photos')
+                                    if (vehiclePhotosSection) {
+                                      vehiclePhotosSection.scrollIntoView({ behavior: 'smooth' })
+                                    }
+                                  }}
                                   onError={(e) => {
                                     // If image fails to load, show placeholder
                                     e.currentTarget.style.display = 'none'
                                     e.currentTarget.nextElementSibling?.classList.remove('hidden')
                                   }}
+                                  title="Click to view all images for this vehicle"
                                 />
                               )
                             }
@@ -1022,27 +1057,47 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {(result.marketAnalysis.referenceListings || []).slice(0, 3).map((listing: any, idx: number) => (
-                            <Button
-                              key={idx}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(listing.url, '_blank')}
-                              className="text-xs px-2 py-1 h-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300 transition-all duration-200 hover:scale-105"
-                            >
-                              {listing.source}
-                            </Button>
-                          ))}
-                          {(result.marketAnalysis.referenceListings || []).length > 3 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setViewingPriceDetails(result)}
-                              className="text-xs px-2 py-1 h-auto bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-300 transition-all duration-200 hover:scale-105"
-                            >
-                              +{(result.marketAnalysis.referenceListings || []).length - 3} more
-                            </Button>
-                          )}
+                          {(() => {
+                            const listings = result.marketAnalysis.referenceListings || []
+                            console.log('🔗 Debug - Sample Links for', result.partName, ':', {
+                              listingsCount: listings.length,
+                              listings: listings.map(l => ({ source: l.source, url: l.url }))
+                            })
+                            
+                            if (listings.length === 0) {
+                              return (
+                                <div className="text-xs text-gray-500">
+                                  No links available
+                                </div>
+                              )
+                            }
+                            
+                            return (
+                              <>
+                                {listings.slice(0, 3).map((listing: any, idx: number) => (
+                                  <Button
+                                    key={idx}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(listing.url, '_blank')}
+                                    className="text-xs px-2 py-1 h-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300 transition-all duration-200 hover:scale-105"
+                                  >
+                                    {listing.source}
+                                  </Button>
+                                ))}
+                                {listings.length > 3 && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingPriceDetails(result)}
+                                    className="text-xs px-2 py-1 h-auto bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-300 transition-all duration-200 hover:scale-105"
+                                  >
+                                    +{listings.length - 3} more
+                                  </Button>
+                                )}
+                              </>
+                            )
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1062,11 +1117,18 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-2">
                         {result.success ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         ) : (
                           <XCircle className="h-5 w-5 text-red-500" />
                         )}
+                          {result.cached && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                              📦 Cached
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -1213,18 +1275,18 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                             <Badge 
                               variant="outline" 
                               className={`${
-                                listing.source.includes('eBay') ? 'bg-blue-100 text-blue-800' :
-                                listing.source.includes('Google') ? 'bg-green-100 text-green-800' :
-                                listing.source.includes('Car-Parts') ? 'bg-purple-100 text-purple-800' :
-                                listing.source.includes('LKQ') ? 'bg-yellow-100 text-yellow-800' :
-                                listing.source.includes('AutoZone') ? 'bg-red-100 text-red-800' :
-                                listing.source.includes('RockAuto') ? 'bg-indigo-100 text-indigo-800' :
-                                listing.source.includes('Amazon') ? 'bg-orange-100 text-orange-800' :
-                                listing.source.includes('Facebook') ? 'bg-blue-100 text-blue-800' :
+                                listing.source?.includes('eBay') ? 'bg-blue-100 text-blue-800' :
+                                listing.source?.includes('Google') ? 'bg-green-100 text-green-800' :
+                                listing.source?.includes('Car-Parts') ? 'bg-purple-100 text-purple-800' :
+                                listing.source?.includes('LKQ') ? 'bg-yellow-100 text-yellow-800' :
+                                listing.source?.includes('AutoZone') ? 'bg-red-100 text-red-800' :
+                                listing.source?.includes('RockAuto') ? 'bg-indigo-100 text-indigo-800' :
+                                listing.source?.includes('Amazon') ? 'bg-orange-100 text-orange-800' :
+                                listing.source?.includes('Facebook') ? 'bg-blue-100 text-blue-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                            {listing.source}
+                              {listing.source || 'Unknown'}
                           </Badge>
                           <span className="text-gray-600 truncate max-w-xs" title={listing.searchQuery}>
                             {listing.searchQuery || 'N/A'}
@@ -1235,24 +1297,27 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                           size="sm"
                           onClick={() => {
                             let searchUrl = ''
-                            if (listing.source.includes('eBay')) {
-                              searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('Google')) {
-                              searchUrl = `https://www.google.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('LKQ')) {
-                              searchUrl = `https://www.lkqonline.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('Car-Parts')) {
-                              searchUrl = `https://www.car-parts.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('AutoZone')) {
-                              searchUrl = `https://www.autozone.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('RockAuto')) {
-                              searchUrl = `https://www.rockauto.com/en/catalog/${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('Amazon')) {
-                              searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(listing.searchQuery)}`
-                            } else if (listing.source.includes('Facebook')) {
-                              searchUrl = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(listing.searchQuery)}`
+                            const source = listing.source || 'Unknown'
+                            const query = listing.searchQuery || ''
+                            
+                            if (source.includes('eBay')) {
+                              searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`
+                            } else if (source.includes('Google')) {
+                              searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                            } else if (source.includes('LKQ')) {
+                              searchUrl = `https://www.lkqonline.com/search?q=${encodeURIComponent(query)}`
+                            } else if (source.includes('Car-Parts')) {
+                              searchUrl = `https://www.car-parts.com/search?q=${encodeURIComponent(query)}`
+                            } else if (source.includes('AutoZone')) {
+                              searchUrl = `https://www.autozone.com/search?q=${encodeURIComponent(query)}`
+                            } else if (source.includes('RockAuto')) {
+                              searchUrl = `https://www.rockauto.com/en/catalog/${encodeURIComponent(query)}`
+                            } else if (source.includes('Amazon')) {
+                              searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`
+                            } else if (source.includes('Facebook')) {
+                              searchUrl = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(query)}`
                             } else {
-                              searchUrl = `https://www.google.com/search?q=${encodeURIComponent(listing.searchQuery)}`
+                              searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
                             }
                             window.open(searchUrl, '_blank')
                           }}
@@ -1299,18 +1364,18 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                             <Badge 
                               variant="outline" 
                               className={`${
-                                listing.source.includes('eBay') ? 'bg-blue-100 text-blue-800' :
-                                listing.source.includes('Google') ? 'bg-green-100 text-green-800' :
-                                listing.source.includes('Car-Parts') ? 'bg-purple-100 text-purple-800' :
-                                listing.source.includes('LKQ') ? 'bg-yellow-100 text-yellow-800' :
-                                listing.source.includes('AutoZone') ? 'bg-red-100 text-red-800' :
-                                listing.source.includes('RockAuto') ? 'bg-indigo-100 text-indigo-800' :
-                                listing.source.includes('Amazon') ? 'bg-orange-100 text-orange-800' :
-                                listing.source.includes('Facebook') ? 'bg-blue-100 text-blue-800' :
+                                listing.source?.includes('eBay') ? 'bg-blue-100 text-blue-800' :
+                                listing.source?.includes('Google') ? 'bg-green-100 text-green-800' :
+                                listing.source?.includes('Car-Parts') ? 'bg-purple-100 text-purple-800' :
+                                listing.source?.includes('LKQ') ? 'bg-yellow-100 text-yellow-800' :
+                                listing.source?.includes('AutoZone') ? 'bg-red-100 text-red-800' :
+                                listing.source?.includes('RockAuto') ? 'bg-indigo-100 text-indigo-800' :
+                                listing.source?.includes('Amazon') ? 'bg-orange-100 text-orange-800' :
+                                listing.source?.includes('Facebook') ? 'bg-blue-100 text-blue-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                              {listing.source}
+                              {listing.source || 'Unknown'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -1347,16 +1412,19 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                                   onClick={() => {
                                     // Create search URL based on source
                                     let searchUrl = ''
-                                    if (listing.source.includes('eBay')) {
-                                      searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(listing.searchQuery)}`
-                                    } else if (listing.source.includes('Google')) {
-                                      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                                    } else if (listing.source.includes('LKQ')) {
-                                      searchUrl = `https://www.lkqonline.com/search?q=${encodeURIComponent(listing.searchQuery)}`
-                                    } else if (listing.source.includes('Car-Parts')) {
-                                      searchUrl = `https://www.car-parts.com/search?q=${encodeURIComponent(listing.searchQuery)}`
+                                    const source = listing.source || 'Unknown'
+                                    const query = listing.searchQuery || ''
+                                    
+                                    if (source.includes('eBay')) {
+                                      searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`
+                                    } else if (source.includes('Google')) {
+                                      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+                                    } else if (source.includes('LKQ')) {
+                                      searchUrl = `https://www.lkqonline.com/search?q=${encodeURIComponent(query)}`
+                                    } else if (source.includes('Car-Parts')) {
+                                      searchUrl = `https://www.car-parts.com/search?q=${encodeURIComponent(query)}`
                                     } else {
-                                      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(listing.searchQuery)}`
+                                      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
                                     }
                                     window.open(searchUrl, '_blank')
                                   }}
