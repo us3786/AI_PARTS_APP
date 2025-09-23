@@ -33,3 +33,6 @@ ai-parts-app-nextjs/PHASE1_COMPLETED.md
 ai-parts-app-nextjs/.env*
 uploads/
 vehicles.db
+venv/
+.venv/
+tf_env/
