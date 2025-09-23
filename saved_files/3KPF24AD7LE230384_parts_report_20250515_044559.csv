@@ -1,0 +1,10 @@
+Part Name,eBay Scraped Avg Price,eBay Scraped Low Price,eBay Scraped URL,Scraped Image Path (Local),eBay Scrape Error,Google Shopping Avg Price,Google Shopping URL,Google Scrape Error,AI Image Valid
+Fog & Driving Lights,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Fog%20%26%20Driving%20Lights%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Tail Light Assemblies,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Tail%20Light%20Assemblies%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Air Filter Housings,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Air%20Filter%20Housings%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Cabin Air Filters,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Cabin%20Air%20Filters%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Floor Mats & Carpets,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Floor%20Mats%20%26%20Carpets%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Window Trim,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Window%20Trim%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Sun Visors,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Sun%20Visors%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Air Flow Sensors,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Air%20Flow%20Sensors%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Door Sill Plates,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Door%20Sill%20Plates%20used%20price&tbm=shop,Google Shopping scraping not implemented,

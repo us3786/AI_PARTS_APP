@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VIN Decoder & Advanced Parts Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar for webkit browsers */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .accordion-arrow::after {
+      content: ' ▼';
+      font-size: 0.8em;
+      transition: transform 0.3s ease;
+    }
+
+    .accordion-arrow.open::after {
+      transform: rotate(180deg);
+      content: ' ▲';
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #3b82f6;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .custom-checkbox {
+      appearance: none;
+      background-color: #fff;
+      margin-right: 0.5rem;
+      font: inherit;
+      color: currentColor;
+      width: 1.15em;
+      height: 1.15em;
+      border: 0.15em solid currentColor;
+      border-radius: 0.15em;
+      transform: translateY(-0.075em);
+      display: inline-grid;
+      place-content: center;
+      cursor: pointer;
+    }
+
+    .custom-checkbox::before {
+      content: "";
+      width: 0.65em;
+      height: 0.65em;
+      transform: scale(0);
+      transition: 120ms transform ease-in-out;
+      box-shadow: inset 1em 1em #3b82f6;
+      transform-origin: bottom left;
+      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    }
+
+    .custom-checkbox:checked::before {
+      transform: scale(1);
+    }
+
+    .input-field,
+    .select-field {
+      display: block;
+      width: 100%;
+      border-radius: 0.375rem;
+      border-width: 1px;
+      border-color: #cbd5e1;
+      /* cool-gray-300 */
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .input-field:focus,
+    .select-field:focus {
+      border-color: #3b82f6;
+      /* blue-500 */
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+      --tw-ring-color: #3b82f6;
+      /* blue-500 */
+      box-shadow: 0 0 0 2px var(--tw-ring-color);
+    }
+
+    .label-text {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #64748b;
+      /* cool-gray-500 */
+      margin-bottom: 0.125rem;
+    }
+
+    .section-header {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #334155;
+      /* cool-gray-700 */
+      margin-bottom: 1rem;
+      border-bottom-width: 1px;
+      padding-bottom: 0.5rem;
+    }
+
+    .button-primary {
+      background-color: #2563eb;
+      /* blue-600 */
+      color: white;
+      font-weight: 600;
+      padding: 0.625rem 1rem;
+      border-radius: 0.375rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      transition: background-color 0.15s ease-in-out;
+      cursor: pointer;
+    }
+
+    .button-primary:hover {
+      background-color: #1d4ed8;
+      /* blue-700 */
+    }
+
+    .button-secondary {
+      background-color: #475569;
+      /* cool-gray-600 */
+      color: white;
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .button-secondary:hover {
+      background-color: #334155;
+      /* cool-gray-700 */
+    }
+
+    .button-success {
+      background-color: #16a34a;
+      /* green-600 */
+      color: white;
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .button-success:hover {
+      background-color: #15803d;
+      /* green-700 */
+    }
+
+    .button-danger {
+      background-color: #dc2626;
+      /* red-600 */
+      color: white;
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .button-danger:hover {
+      background-color: #b91c1c;
+      /* red-700 */
+    }
+
+    .info-banner {
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .info-banner-error {
+      background-color: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+
+    .info-banner-success {
+      background-color: #dcfce7;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+
+    .info-banner-info {
+      background-color: #e0f2fe;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+    }
+
+    .info-banner-loading {
+      background-color: #e0f2fe;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+      display: flex;
+      align-items: center;
+    }
+
+    .compatibility-list {
+      font-size: 0.75rem;
+      max-height: 60px;
+      overflow-y: auto;
+      background-color: #f8fafc;
+      padding: 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      margin-top: 2px;
+    }
+
+    .compatibility-list ul {
+      list-style-type: disc;
+      margin-left: 15px;
+    }
+
+    .editable-part-name,
+    .part-item-editable-name {
+      cursor: pointer;
+      text-decoration: underline dashed #94a3b8;
+      padding: 2px 0;
+    }
+
+    .editable-part-name:hover,
+    .part-item-editable-name:hover {
+      background-color: #eff6ff;
+      /* blue-50 */
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+  <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+    <header class="mb-6 text-center relative">
+      <h1 class="text-4xl font-bold text-slate-700">VIN Decoder & Advanced Parts Tool</h1>
+      <p class="text-slate-500 mt-1">Streamline your automotive parts processing.</p>
+      <div class="absolute top-0 right-0">
+        <a href="/settings" class="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+          title="Application Settings">
+          ⚙️ Settings
+        </a>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-1 space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h3 class="section-header">Step 1: Decode VIN</h3>
+          <label for="vin" class="label-text">Enter VIN:</label>
+          <div class="flex space-x-2">
+            <input type="text" id="vin" placeholder="e.g. 1HGCM82633A123456" class="input-field flex-grow !mb-0">
+            <button onclick="decodeVIN()" class="button-primary whitespace-nowrap">Decode</button>
+          </div>
+          <div id="vin-result" class="mt-3 info-banner hidden"></div>
+          <div id="manual-entry" class="hidden mt-4">
+            <h4 class="text-lg font-medium text-slate-600 mb-2">Manual Vehicle Entry:</h4>
+            <div class="space-y-2">
+              <div><label for="make_manual" class="label-text">Make:</label><input type="text" id="make_manual"
+                  class="input-field"></div>
+              <div><label for="model_manual" class="label-text">Model:</label><input type="text" id="model_manual"
+                  class="input-field"></div>
+              <div><label for="year_manual" class="label-text">Year:</label><input type="text" id="year_manual"
+                  class="input-field"></div>
+              <div><label for="submodel_manual" class="label-text">Submodel (Optional):</label><input type="text"
+                  id="submodel_manual" class="input-field"></div>
+              <button onclick="submitManualVehicle()" class="w-full button-secondary mt-2">Use Manual Info & Get
+                Suggestions</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-lg hidden" id="parts-suggestion-section">
+          <div class="flex justify-between items-center">
+            <h3 class="section-header flex-grow !mb-2">Step 2: Select Suggested Parts</h3>
+            <div class="flex space-x-2 mb-2">
+              <button onclick="saveSuggestions()" title="Save current list of suggestions"
+                class="button-secondary !py-1 !px-2 text-xs whitespace-nowrap">💾 Save List</button>
+              <label for="loadSuggestionsFile" title="Load a previously saved list"
+                class="button-secondary !py-1 !px-2 text-xs whitespace-nowrap cursor-pointer">📂 Load List</label>
+              <input type="file" id="loadSuggestionsFile" class="hidden" accept=".json"
+                onchange="loadSuggestionsFromFile(event)">
+            </div>
+          </div>
+          <div id="part-suggestion-status" class="mb-3 info-banner hidden"></div>
+          <div class="mb-4 flex items-center gap-2">
+            <input type="text" id="search-parts-box" placeholder="Filter suggested parts..."
+              class="input-field flex-grow !mb-0">
+            <button type="button" onclick="filterSuggestedPartsUI()"
+              class="button-secondary text-sm !py-2">Filter</button>
+            <button type="button" onclick="clearPartFilterUI()" class="button-secondary text-sm !py-2">Clear</button>
+          </div>
+          <div class="mb-4 flex space-x-2">
+            <button onclick="toggleAllSuggestedParts(true)" class="flex-1 button-success text-sm">✓ Check All</button>
+            <button onclick="toggleAllSuggestedParts(false)" class="flex-1 button-danger text-sm">✗ Uncheck All</button>
+            <button onclick="deleteSelectedSuggestedParts()" class="flex-1 button-danger text-sm">🗑️ Delete Selected
+              Suggestions</button>
+          </div>
+          <div id="part-options-container"
+            class="max-h-96 overflow-y-auto p-3 border border-slate-200 rounded-md bg-slate-50 space-y-3">
+          </div>
+          <div class="mt-4 flex items-center gap-2">
+            <input type="text" id="custom-part-name" placeholder="Add custom part name"
+              class="input-field flex-grow !mb-0">
+            <button onclick="addCustomPartToList()"
+              class="bg-sky-500 hover:bg-sky-600 text-white font-medium py-2.5 px-4 rounded-md text-sm">＋ Add</button>
+          </div>
+          <hr class="my-6 border-slate-200">
+          <button onclick="fetchSelectedPartsData()" class="w-full button-primary font-bold py-3">Fetch Data for
+            Selected Parts</button>
+          <div id="fetch-progress" class="mt-3 info-banner hidden"></div>
+        </div>
+      </div>
+
+      <div class="md:col-span-1 space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-lg hidden" id="results-display-section">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="section-header flex-grow !mb-0">Step 3: Fetched Part Details</h3>
+            <button id="deleteSelectedFetchedPartsBtn" onclick="deleteSelectedFetchedParts()"
+              class="ml-4 button-danger !py-1.5 !px-3 text-xs whitespace-nowrap">Delete Selected</button>
+          </div>
+          <div id="parts-table-container" class="overflow-x-auto">
+          </div>
+          <div id="csv-download-link-container" class="mt-4 text-center"></div>
+          <div class="mt-6">
+            <button onclick="preparePartsForPosting()"
+              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md shadow-md">📋
+              Prepare Selected for eBay Listing</button>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-lg hidden" id="ebay-posting-section">
+          <h3 class="section-header">Step 4: Review and Post to eBay</h3>
+          <p class="text-sm text-amber-700 bg-amber-50 p-3 rounded-md mb-4 border border-amber-200">
+            <strong>Important:</strong> Review all fields carefully. <span class="font-semibold">Image URLs must be
+              public HTTPS links.</span>
+            Ensure eBay Category ID, Merchant Location Key, and Policy IDs are correct for your eBay account.
+            Placeholder values will cause posting errors.
+          </p>
+          <div id="ebay-post-form-container" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+          </div>
+          <button onclick="confirmAndPostToEbay()"
+            class="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-md shadow-md">🚀
+            Confirm & Post All to eBay</button>
+          <div id="ebay-post-status" class="mt-3 info-banner hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 bg-slate-800 text-slate-200 p-4 rounded-lg shadow-md">
+      <h4 class="text-lg font-semibold text-slate-100 mb-2">Activity Log:</h4>
+      <div class="log-box bg-slate-900 text-sm font-mono p-3 h-48 overflow-y-auto rounded" id="console-log"></div>
+    </div>
+  </div>
+  <script>
+    // --- Global State Variables ---
+    let currentVehicle = {};
+    let aiSuggestedPartsData = { categories: [], standalone_parts: [] };
+    let fetchedPartsDetails = []; // Holds data for Step 3 table
+    let partsToPostDetailsGlobal = []; // Holds data for Step 4 eBay forms
+    let appBaseUrlFromSettings = ''; // Will be set by fetchAppBaseUrl
+
+    // --- Utility Functions ---
+    function formatDollar(val) {
+      if (val == null || isNaN(val)) return '—';
+      return '$' + Number(val).toFixed(2);
+    }
+
+    function logToPage(message) {
+      const consoleLog = document.getElementById('console-log');
+      if (consoleLog) {
+        const time = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.textContent = `[${time}] ${message}`;
+        consoleLog.insertBefore(logEntry, consoleLog.firstChild); // Prepend for newest on top
+        if (consoleLog.children.length > 200) { // Limit log size
+          consoleLog.removeChild(consoleLog.lastChild);
+        }
+      }
+      console.log(message); // Also log to browser console
+    }
+
+    async function fetchAppBaseUrl() {
+      try {
+        // In a real app, this might fetch from a /config endpoint or be injected by the server.
+        // For now, using window.location.origin for constructing absolute URLs if needed for images.
+        appBaseUrlFromSettings = window.location.origin;
+        logToPage(`App base URL considered as: ${appBaseUrlFromSettings}`);
+      } catch (error) {
+        logToPage(`Error fetching app base URL: ${error.message}. Using relative paths or empty base.`);
+        appBaseUrlFromSettings = '';
+      }
+    }
+
+    // --- UI Helper Functions ---
+    function showSpinner(elementId, message = "Loading...") {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.innerHTML = `<div class="spinner"></div> <span class="ml-2">${message}</span>`;
+        el.className = 'info-banner info-banner-loading';
+        el.classList.remove('hidden');
+      }
+    }
+    // Define this utility function once in your script, perhaps near the top
+    function htmlEscape(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(elementId, message, type = "success") {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.textContent = message;
+        el.className = 'info-banner'; // Reset classes
+        if (type === "error") el.classList.add('info-banner-error');
+        else if (type === "info") el.classList.add('info-banner-info');
+        else el.classList.add('info-banner-success');
+        el.classList.remove('hidden');
+      }
+    }
+
+    function hideMessage(elementId) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        el.className = 'info-banner'; // Reset classes
+      }
+    }
+
+    function toggleSection(divId, headerElement) {
+      const content = document.getElementById(divId);
+      if (content) {
+        content.classList.toggle('hidden');
+        headerElement.classList.toggle('open');
+      }
+    }
+
+    // --- Step 1: VIN Decoding & Manual Entry ---
+    async function decodeVIN() {
+      const vinInput = document.getElementById("vin");
+      const vin = vinInput.value.trim().toUpperCase();
+      if (!vin) {
+        alert("Please enter a VIN.");
+        return;
+      }
+      vinInput.value = vin;
+      logToPage(`📡 Decoding VIN: ${vin}`);
+      showSpinner("vin-result", "Decoding VIN...");
+
+      ["parts-suggestion-section", "results-display-section", "ebay-posting-section"]
+        .forEach(id => document.getElementById(id).classList.add("hidden"));
+      hideMessage("part-suggestion-status");
+      document.getElementById("manual-entry").classList.add("hidden");
+
+      try {
+        const response = await fetch("/decode-vin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vin })
+        });
+        const vinResult = await response.json();
+
+        if (response.status === 503 && vinResult.code === "SERVICE_UNAVAILABLE") {
+          showMessage("vin-result", `⚠️ ${vinResult.message}`, "error");
+          document.getElementById("manual-entry").classList.remove("hidden");
+          return;
+        }
+        if (!response.ok || !vinResult.success) {
+          const msg = vinResult.message || "Invalid VIN or error decoding.";
+          showMessage("vin-result", `⚠️ ${msg}`, "error");
+          logToPage(`⚠️ VIN decode failed: ${msg}`);
+          document.getElementById("manual-entry").classList.remove("hidden");
+          return;
+        }
+
+        currentVehicle = {
+          vin,
+          make: vinResult.make,
+          model: vinResult.model,
+          year: vinResult.year,
+          submodel: vinResult.submodel || "",
+          details: vinResult.details || {}
+        };
+        showMessage("vin-result", `✅ Vehicle: ${vinResult.year} ${vinResult.make} ${vinResult.model} (${vinResult.submodel || "N/A"})`);
+        logToPage(`✅ VIN decoded: ${vinResult.year} ${vinResult.make} ${vinResult.model}`);
+        await getAISuggestions();
+      } catch (err) {
+        console.error("❌ VIN decode fetch error:", err);
+        showMessage("vin-result", `❌ Error: ${err.message}`, "error");
+        logToPage(`❌ VIN decode fetch error: ${err.message}`);
+        document.getElementById("manual-entry").classList.remove("hidden");
+      }
+    }
+
+    async function submitManualVehicle() {
+      const make = document.getElementById("make_manual").value.trim();
+      const model = document.getElementById("model_manual").value.trim();
+      const year = document.getElementById("year_manual").value.trim();
+      if (!make || !model || !year) {
+        alert("Make, Model, and Year are required for manual entry.");
+        return;
+      }
+      currentVehicle = {
+        vin: "MANUAL_ENTRY",
+        make, model, year,
+        submodel: document.getElementById("submodel_manual").value.trim() || "",
+        details: {}
+      };
+      showMessage("vin-result", `✅ Using Manual: ${year} ${make} ${model} ${currentVehicle.submodel}`);
+      logToPage(` Fahrzeug manuell eingegeben: ${year} ${make} ${model}. Rufe KI-Vorschläge ab...`);
+      document.getElementById("manual-entry").classList.add("hidden");
+      await getAISuggestions();
+    }
+
+    // --- Step 2: AI Part Suggestions ---
+    async function getAISuggestions() {
+      if (!currentVehicle.make) {
+        showMessage("part-suggestion-status", "⚠️ Enter vehicle info first", "error");
+        return;
+      }
+      showSpinner("part-suggestion-status", "🧠 Fetching AI part suggestions...");
+      document.getElementById("parts-suggestion-section").classList.remove("hidden");
+      document.getElementById("part-options-container").innerHTML = ""; // Clear previous
+
+      const payload = {
+        make: currentVehicle.make,
+        model: currentVehicle.model,
+        year: currentVehicle.year,
+        submodel: currentVehicle.submodel
+      };
+      if (currentVehicle.vin !== "MANUAL_ENTRY") payload.vin = currentVehicle.vin;
+
+      try {
+        const response = await fetch("/get-vehicle-part-suggestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          const msg = data.message || "Failed to fetch AI suggestions.";
+          showMessage("part-suggestion-status", `⚠️ ${msg}`, "error");
+          logToPage(`⚠️ AI Error: ${msg}`);
+          aiSuggestedPartsData = { categories: [], standalone_parts: [] }; // Reset
+          renderPartOptionsUI(); // Render empty or with error
+          return;
+        }
+        aiSuggestedPartsData = data; // Store full response
+        const info = data.vehicle_info_for_suggestions || `${currentVehicle.year} ${currentVehicle.make} ${currentVehicle.model}`;
+        logToPage(`🧠 AI Suggestions for ${info}: ${data.categories?.length || 0} categories, ${data.standalone_parts?.length || 0} standalone`);
+        showMessage("part-suggestion-status", `🧠 Suggestions loaded for ${info}. Review and select.`, "info");
+        renderPartOptionsUI();
+      } catch (err) {
+        console.error("❌ AI Suggestion fetch error:", err);
+        showMessage("part-suggestion-status", `❌ Error: ${err.message}`, "error");
+        logToPage(`❌ AI fetch error: ${err.message}`);
+        aiSuggestedPartsData = { categories: [], standalone_parts: [] }; // Reset
+        renderPartOptionsUI(); // Render empty or with error
+      }
+    }
+
+    function makeSuggestedPartNameEditable(spanElement, categoryIndex, partIndex) {
+      const isStandalone = categoryIndex === -1;
+      const isCustom = categoryIndex === -2; // For custom parts
+      let dataObject;
+
+      if (isCustom) {
+        // For custom parts, the name is directly on the span or checkbox value
+        // This function might need adjustment if custom parts are stored in aiSuggestedPartsData
+        dataObject = { name: spanElement.textContent.replace(' (Custom)', '').trim() }; // Example
+      } else if (isStandalone) {
+        dataObject = aiSuggestedPartsData.standalone_parts[partIndex];
+      } else {
+        dataObject = aiSuggestedPartsData.categories[categoryIndex].common_parts[partIndex];
+      }
+
+      const currentName = typeof dataObject === 'object' ? dataObject.name : String(dataObject);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentName;
+      input.className = 'input-field !text-xs !p-0.5 !m-0 !inline-block !border-blue-400 !shadow-md'; // Tailwind classes
+      input.style.width = Math.max(150, spanElement.offsetWidth + 20) + 'px';
+
+      spanElement.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const save = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          const cb = input.closest('.part-item')?.querySelector('.suggested-part-checkbox');
+          if (cb) cb.value = newName; // Update checkbox value as it's used later
+
+          if (isCustom) {
+            // Update name for custom part (if stored in DOM or a separate list)
+            // For now, assumes DOM update is enough as re-render might re-create it.
+          } else if (isStandalone) {
+            if (typeof dataObject === 'object') dataObject.name = newName;
+            else aiSuggestedPartsData.standalone_parts[partIndex] = { name: newName }; // Convert to object if it was a string
+          } else {
+            if (typeof dataObject === 'object') dataObject.name = newName;
+            else aiSuggestedPartsData.categories[categoryIndex].common_parts[partIndex] = { name: newName }; // Convert to object
+          }
+          logToPage(`📝 Renamed part to "${newName}"`);
+        }
+        const newSpan = document.createElement('span');
+        newSpan.className = 'ml-2 text-sm part-item-editable-name';
+        newSpan.textContent = (newName || currentName) + (isCustom ? ' (Custom)' : '');
+        newSpan.title = 'Click to edit part name';
+        newSpan.onclick = () => makeSuggestedPartNameEditable(newSpan, categoryIndex, partIndex);
+        input.replaceWith(newSpan);
+      };
+
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.blur();
+        else if (e.key === 'Escape') {
+          input.value = currentName; // Revert
+          input.blur();
+        }
+      });
+    }
+
+    const buildPartItemHTML = (partData, catIndex, partIdx, mainCatName = "", isCustom = false) => {
+      const partNameStr = (typeof partData === 'object' && partData.name !== undefined) ? partData.name : String(partData);
+      const ebayCatIdFromPart = (typeof partData === 'object' && partData.specific_ebay_cat_id) ? partData.specific_ebay_cat_id : null;
+      const ebayCatIdFromCategory = (catIndex >= 0 && aiSuggestedPartsData.categories[catIndex]) ? aiSuggestedPartsData.categories[catIndex].id : "";
+      const ebayCatId = ebayCatIdFromPart || ebayCatIdFromCategory || (isCustom ? "6030" : "");
+
+      const safePartNameForValue = String(partNameStr || '').replace(/"/g, '&quot;'); // For value attribute
+      const editableClass = "part-item-editable-name";
+      const clickHandler = `makeSuggestedPartNameEditable(this, ${catIndex}, ${partIdx})`;
+
+      return `
+        <div class="part-item py-1 flex items-center">
+            <label class="flex items-center text-slate-700 hover:bg-slate-100 p-1 rounded cursor-pointer flex-grow">
+                <input type="checkbox" value="${safePartNameForValue}" 
+                       data-ebay-category-id="${ebayCatId || ''}"
+                       data-main-category-name="${mainCatName || (isCustom ? 'Custom' : '')}" 
+                       data-category-index="${catIndex}" 
+                       data-part-index="${partIdx}"
+                       class="custom-checkbox suggested-part-checkbox h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" 
+                       checked>
+                <span class="ml-2 text-sm ${editableClass}" onclick="${clickHandler}" title="Click to edit part name">${htmlEscape(partNameStr)}${isCustom ? ' (Custom)' : ''}</span>
+            </label>
+        </div>`
+    };
+
+    function toggleCategoryDisplay(headerElement, contentId) {
+      const content = document.getElementById(contentId);
+      if (content) {
+        content.classList.toggle('hidden');
+        headerElement.classList.toggle('open');
+        // Ensure arrow updates if content visibility is toggled externally
+        if (content.classList.contains('hidden')) {
+          headerElement.classList.remove('open');
+        } else {
+          headerElement.classList.add('open');
+        }
+      }
+    }
+
+    function renderPartOptionsUI() {
+      const container = document.getElementById("part-options-container");
+      if (!container) return;
+      let contentHtml = "";
+
+      // Render AI-suggested categories
+      if (aiSuggestedPartsData && aiSuggestedPartsData.categories && aiSuggestedPartsData.categories.length > 0) {
+        aiSuggestedPartsData.categories.forEach((cat, catIndex) => {
+          if (!cat || !cat.common_parts) return;
+          const catDivId = `ai_cat_content_${String(cat.id || 'catidx' + catIndex).replace(/\W/g, '_')}`;
+          contentHtml += `
+                <div class="part-category mb-2">
+                  <h4 onclick="toggleCategoryDisplay(this, '${catDivId}')"
+                      class="accordion-arrow bg-slate-200 text-slate-700 p-2.5 rounded-md text-sm font-medium cursor-pointer hover:bg-slate-300 flex justify-between items-center open">
+                    <span>${cat.name || `Category (ID: ${cat.id})`} (${(cat.common_parts || []).length})</span>
+                  </h4>
+                  <div class="part-category-content pl-4 pt-1 border-l-2 border-slate-200 ml-1" id="${catDivId}">`;
+          (cat.common_parts || []).forEach((partData, partIdx) => {
+            contentHtml += buildPartItemHTML(partData, catIndex, partIdx, cat.name);
+          });
+          contentHtml += `</div></div>`;
+        });
+      }
+
+      // Render AI-suggested standalone parts
+      if (aiSuggestedPartsData && aiSuggestedPartsData.standalone_parts && aiSuggestedPartsData.standalone_parts.length > 0) {
+        const standaloneId = 'ai_cat_content_standalone';
+        contentHtml += `
+            <div class="part-category mb-2">
+              <h4 onclick="toggleCategoryDisplay(this, '${standaloneId}')"
+                  class="accordion-arrow bg-slate-200 text-slate-700 p-2.5 rounded-md text-sm font-medium cursor-pointer hover:bg-slate-300 flex justify-between items-center open">
+                <span>Other Suggested Parts (${aiSuggestedPartsData.standalone_parts.length})</span>
+              </h4>
+              <div class="part-category-content pl-4 pt-1 border-l-2 border-slate-200 ml-1" id="${standaloneId}">`;
+        aiSuggestedPartsData.standalone_parts.forEach((partData, partIdx) => {
+          contentHtml += buildPartItemHTML(partData, -1, partIdx, "Standalone");
+        });
+        contentHtml += `</div></div>`;
+      }
+
+      // Render Custom Added Parts section (empty or with parts)
+      // This section is managed by addCustomPartToList and deleteSelectedSuggestedParts
+      let customPartsHtml = '';
+      const customPartsContainerFromDOM = document.getElementById('cat_custom_parts_content_actual');
+      if (customPartsContainerFromDOM) { // If it exists, preserve its content during re-render of AI parts
+        customPartsHtml = customPartsContainerFromDOM.innerHTML;
+      }
+
+      const customWrapperId = 'cat_custom_parts_main';
+      const customContentId = 'cat_custom_parts_content_actual';
+      if (customPartsHtml || (aiSuggestedPartsData.categories?.length === 0 && aiSuggestedPartsData.standalone_parts?.length === 0)) {
+        // Always show custom section if it has items or if no AI items
+        contentHtml += `
+            <div class="part-category mb-2" id="${customWrapperId}">
+              <h4 onclick="toggleCategoryDisplay(this, '${customContentId}')"
+                  class="accordion-arrow bg-slate-200 text-slate-700 p-2.5 rounded-md text-sm font-medium cursor-pointer hover:bg-slate-300 flex justify-between items-center open">
+                <span>Custom Added Parts</span> <span id="custom-parts-count"></span>
+              </h4>
+              <div class="part-category-content pl-4 pt-1 border-l-2 border-slate-200 ml-1" id="${customContentId}">
+                ${customPartsHtml}
+              </div>
+            </div>`;
+      }
+
+
+      if (!contentHtml && !document.getElementById(customWrapperId)?.querySelector('.part-item')) {
+        contentHtml = "<p class='text-slate-500 text-sm p-2'>No part suggestions found. You can add custom parts below.</p>";
+      }
+
+      container.innerHTML = contentHtml;
+      updateCustomPartsCount(); // Update count after render
+    }
+
+    function updateCustomPartsCount() {
+      const countSpan = document.getElementById('custom-parts-count');
+      const customItems = document.querySelectorAll('#cat_custom_parts_content_actual .part-item');
+      if (countSpan) {
+        countSpan.textContent = customItems.length > 0 ? `(${customItems.length})` : '';
+      }
+    }
+
+    function addCustomPartToList() {
+      const partNameInput = document.getElementById('custom-part-name');
+      const partName = partNameInput.value.trim();
+      if (!partName) {
+        alert('Please enter a custom part name.');
+        return;
+      }
+
+      let wrapper = document.getElementById('cat_custom_parts_main');
+      let containerForCustomParts = document.getElementById('cat_custom_parts_content_actual');
+
+      if (!wrapper) {
+        const mainOptionsContainer = document.getElementById('part-options-container');
+        // If the "No suggestions found" message is there, remove it
+        const noSuggestionsMsg = mainOptionsContainer.querySelector('p.text-slate-500');
+        if (noSuggestionsMsg) noSuggestionsMsg.remove();
+
+        mainOptionsContainer.insertAdjacentHTML('beforeend', `
+            <div class="part-category mb-2" id="cat_custom_parts_main">
+              <h4 onclick="toggleCategoryDisplay(this, 'cat_custom_parts_content_actual')"
+                  class="accordion-arrow bg-slate-200 text-slate-700 p-2.5 rounded-md text-sm font-medium cursor-pointer hover:bg-slate-300 flex justify-between items-center open">
+                <span>Custom Added Parts</span> <span id="custom-parts-count"></span>
+              </h4>
+              <div id="cat_custom_parts_content_actual" class="part-category-content pl-4 pt-1 border-l-2 border-slate-200 ml-1">
+              </div>
+            </div>`);
+        wrapper = document.getElementById('cat_custom_parts_main');
+        containerForCustomParts = document.getElementById('cat_custom_parts_content_actual');
+      }
+
+      // catIndex -2 for custom, partIndex is current count of custom items
+      const idx = containerForCustomParts.children.length;
+      const newPartHtml = buildPartItemHTML(partName, -2, idx, "Custom", true);
+
+      containerForCustomParts.insertAdjacentHTML('beforeend', newPartHtml);
+      partNameInput.value = ''; // Clear input
+      logToPage(`➕ Custom part added: ${partName}`);
+
+      containerForCustomParts.classList.remove('hidden'); // Ensure visible
+      wrapper.querySelector('h4').classList.add('open');
+      updateCustomPartsCount();
+    }
+
+    function deleteSelectedSuggestedParts() {
+      const checkboxes = document.querySelectorAll('#part-options-container .suggested-part-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('Please select suggested parts to delete.');
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete ${checkboxes.length} selected suggestion(s)?`)) {
+        return;
+      }
+
+      let deletedCount = 0;
+      // Iterate backwards when removing from DOM collections or arrays to avoid index issues
+      Array.from(checkboxes).reverse().forEach(cb => {
+        const catIndex = parseInt(cb.dataset.categoryIndex, 10);
+        const partIndexOriginal = parseInt(cb.dataset.partIndex, 10); // This index might be stale if items already removed
+        const partName = cb.value;
+        const partItemElement = cb.closest('.part-item');
+
+        if (catIndex === -2) { // Custom part (handled by DOM removal)
+          if (partItemElement) {
+            partItemElement.remove();
+            logToPage(`🗑️ Custom part "${partName}" removed from list.`);
+            deletedCount++;
+          }
+        } else if (catIndex === -1) { // Standalone AI part
+          // Find by name or a more stable ID if available; partIndexOriginal can be tricky
+          const foundIndex = aiSuggestedPartsData.standalone_parts.findIndex(p => (typeof p === 'object' ? p.name : p) === partName);
+          if (foundIndex !== -1) {
+            aiSuggestedPartsData.standalone_parts.splice(foundIndex, 1);
+            logToPage(`🗑️ Standalone part "${partName}" removed from data.`);
+            deletedCount++;
+          }
+          if (partItemElement) partItemElement.remove(); // Also remove from DOM
+        } else { // AI category part
+          const cat = aiSuggestedPartsData.categories[catIndex];
+          if (cat && cat.common_parts) {
+            const foundIndex = cat.common_parts.findIndex(p => (typeof p === 'object' ? p.name : p) === partName);
+            if (foundIndex !== -1) {
+              cat.common_parts.splice(foundIndex, 1);
+              logToPage(`🗑️ Part "${partName}" from "${cat.name}" removed from data.`);
+              deletedCount++;
+            }
+          }
+          if (partItemElement) partItemElement.remove(); // Also remove from DOM
+        }
+      });
+
+      // After modifying aiSuggestedPartsData or DOM for custom parts, re-render or selectively update UI.
+      // A full re-render is simpler here:
+      if (deletedCount > 0) {
+        logToPage(`🗑️ ${deletedCount} suggestion(s) deleted. List updated.`);
+        renderPartOptionsUI(); // Re-render to reflect data changes and re-index if needed
+      }
+      updateCustomPartsCount();
+    }
+
+    function saveSuggestions() {
+      const out = {
+        // Deep clone to avoid modifying original data if it's referenced elsewhere
+        categories: JSON.parse(JSON.stringify(aiSuggestedPartsData.categories || [])),
+        standalone_parts: JSON.parse(JSON.stringify(aiSuggestedPartsData.standalone_parts || []))
+      };
+
+      // Capture custom parts from the DOM as they are not in aiSuggestedPartsData
+      const customPartsFromDOM = [];
+      document.querySelectorAll('#cat_custom_parts_content_actual .part-item').forEach(itemEl => {
+        const cb = itemEl.querySelector('.suggested-part-checkbox');
+        if (cb) {
+          customPartsFromDOM.push({
+            name: cb.value,
+            specific_ebay_cat_id: cb.dataset.ebayCategoryId || '6030' // Default eBay category for custom
+          });
+        }
+      });
+
+      if (customPartsFromDOM.length > 0) {
+        // Add them to a special category or as standalone in the output JSON
+        const customCategoryInJSON = out.categories.find(c => c.name === 'Custom Added Parts');
+        if (customCategoryInJSON) {
+          customCategoryInJSON.common_parts = customPartsFromDOM;
+        } else {
+          out.categories.push({
+            name: 'Custom Added Parts',
+            id: 'CUSTOM_PARTS_ID', //  A unique identifier
+            common_parts: customPartsFromDOM
+          });
+        }
+      }
+
+      if (out.categories.length === 0 && out.standalone_parts.length === 0 && customPartsFromDOM.length === 0) {
+        alert('No suggestions (AI or custom) to save.');
+        return;
+      }
+
+      const filename = `vehicle_parts_${currentVehicle.make || 'MANUAL'}_${currentVehicle.model || 'MODEL'}_${currentVehicle.year || 'YEAR'}_${new Date().toISOString().slice(0, 10)}.json`;
+      const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(out, null, 2))}`;
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      logToPage(`💾 Suggestions saved to ${filename}`);
+    }
+
+    function loadSuggestionsFromFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const loadedData = JSON.parse(e.target.result);
+          if (loadedData.categories || loadedData.standalone_parts) {
+            // Separate AI suggestions from Custom Added Parts
+            const customPartsCategory = loadedData.categories.find(cat => cat.id === 'CUSTOM_PARTS_ID' || cat.name === 'Custom Added Parts');
+            aiSuggestedPartsData.categories = loadedData.categories.filter(cat => !(cat.id === 'CUSTOM_PARTS_ID' || cat.name === 'Custom Added Parts'));
+            aiSuggestedPartsData.standalone_parts = loadedData.standalone_parts || [];
+
+            renderPartOptionsUI(); // Render AI parts first
+
+            // Now, add custom parts from the loaded file
+            if (customPartsCategory && customPartsCategory.common_parts) {
+              const customPartNameInput = document.getElementById('custom-part-name'); // temp use
+              customPartsCategory.common_parts.forEach(part => {
+                customPartNameInput.value = part.name; // Use the input to trigger add
+                addCustomPartToList(); // This will create them in the DOM correctly
+              });
+              customPartNameInput.value = ''; // Clean up
+            }
+
+            logToPage(`📂 Suggestions loaded from ${file.name}`);
+            showMessage('part-suggestion-status', `📂 Loaded suggestions from ${file.name}`, 'info');
+          } else {
+            throw new Error('File format incorrect: Missing "categories" or "standalone_parts" array.');
+          }
+        } catch (err) {
+          console.error("Load suggestions error:", err);
+          alert(`Error parsing or loading file: ${err.message}`);
+          logToPage(`❌ Failed to load suggestions file: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = null; // Reset file input to allow re-selection of the same file
+    }
+
+    // --- Step 2 UI Interaction Stubs ---
+    function filterSuggestedPartsUI() { logToPage(" Aktion: Filter für vorgeschlagene Teile (noch nicht implementiert)"); alert("Filter UI not implemented yet."); }
+    function clearPartFilterUI() { document.getElementById('search-parts-box').value = ''; logToPage(" Aktion: Filter für vorgeschlagene Teile gelöscht (noch nicht implementiert)"); alert("Clear filter UI not implemented yet."); }
+    function toggleAllSuggestedParts(checkState) {
+      document.querySelectorAll('#part-options-container .suggested-part-checkbox').forEach(cb => cb.checked = checkState);
+      logToPage(` Aktion: Alle vorgeschlagenen Teile ${checkState ? 'ausgewählt' : 'abgewählt'}`);
+    }
+
+    // --- Step 3: Fetched Part Details & Table ---
+    async function fetchSelectedPartsData() {
+      const selectedCheckboxes = document.querySelectorAll('#part-options-container .suggested-part-checkbox:checked');
+      if (selectedCheckboxes.length === 0) {
+        alert("Please select parts from Step 2 to fetch data.");
+        return;
+      }
+      const partsToFetch = Array.from(selectedCheckboxes).map(cb => ({
+        name: cb.value,
+        ebayCategoryId: cb.dataset.ebayCategoryId,
+        // Add other relevant data from checkbox if needed
+      }));
+
+      logToPage(`📡 Fetching data for ${partsToFetch.length} selected parts...`);
+      showSpinner("fetch-progress", `Workspaceing data for ${partsToFetch.length} parts...`);
+      document.getElementById("results-display-section").classList.remove("hidden");
+      fetchedPartsDetails = []; // Reset previous results
+
+      try {
+        // This would be a loop or a batch API call
+        // For demo, let's simulate fetching one by one with some mock data
+        for (let i = 0; i < partsToFetch.length; i++) {
+          const part = partsToFetch[i];
+          // Simulate API call
+          // const response = await fetch(`/fetch-part-details`, {method: "POST", ... body: JSON.stringify(part) });
+          // const data = await response.json();
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
+
+          // Mock data structure - replace with actual API response structure
+          const mockData = {
+            originalIndexGlobal: i, // Keep track for updates/forms
+            part: part.name,
+            originalSuggestedPartName: part.name, // Store for later reference to AI suggestions
+            ebay_scraped: {
+              avg: (Math.random() * 100 + 20).toFixed(2),
+              low: (Math.random() * 50 + 10).toFixed(2),
+              image_path: `sample/image${i % 3 + 1}.jpg`, // Placeholder
+              url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(part.name)}`,
+              compatibility_list: [`${currentVehicle.year} ${currentVehicle.make} ${currentVehicle.model}`, "Another Compatible Model"],
+              image_analysis_flags: Math.random() > 0.7 ? ["blurry"] : [],
+            },
+            part_metadata: {
+              mpn: `MPN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              brand: i % 2 === 0 ? "OEM" : "AftermarketBrand"
+            },
+            google_shopping: {
+              url: `https://www.google.com/shopping?q=${encodeURIComponent(part.name)}`,
+              error: null
+            }
+          };
+          fetchedPartsDetails.push(mockData);
+          showMessage("fetch-progress", `Workspaceed ${i + 1} of ${partsToFetch.length}: ${part.name}`, "info");
+        }
+
+        logToPage(`✅ Successfully fetched data for ${fetchedPartsDetails.length} parts.`);
+        hideMessage("fetch-progress"); // Or show success
+        showMessage("fetch-progress", `✅ Data fetched for ${fetchedPartsDetails.length} parts.`, "success");
+      } catch (error) {
+        console.error("Fetch parts data error:", error);
+        logToPage(`❌ Error fetching part data: ${error.message}`);
+        showMessage("fetch-progress", `❌ Error: ${error.message}`, "error");
+      }
+      renderPartsTable();
+      generateCSVDownloadLink();
+    }
+
+    function makeStep3PartNameEditable(spanElement, fetchedDetailIndex) {
+      const partDetail = fetchedPartsDetails[fetchedDetailIndex];
+      if (!partDetail) return;
+      const currentName = partDetail.part;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentName;
+      input.className = 'input-field !text-sm !p-1 !m-0 !inline-block !border-blue-400 !shadow-inner';
+      input.style.width = Math.max(150, spanElement.offsetWidth + 10) + 'px';
+
+      spanElement.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const saveName = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          partDetail.part = newName; // Update the data model
+          logToPage(`📝 Part name in table updated to "${newName}"`);
+        }
+        // Revert to span (even if unchanged, to remove input)
+        const newSpan = document.createElement('span');
+        newSpan.className = 'editable-part-name';
+        newSpan.textContent = newName || currentName;
+        newSpan.onclick = () => makeStep3PartNameEditable(newSpan, fetchedDetailIndex);
+        input.replaceWith(newSpan);
+      };
+
+      input.addEventListener('blur', saveName);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        else if (e.key === 'Escape') {
+          input.value = currentName; // Revert
+          input.blur();
+        }
+      });
+    }
+
+    function renderPartsTable() {
+      const container = document.getElementById("parts-table-container");
+      if (!container) return;
+
+      let tableHtml = `
+        <div class="overflow-x-auto align-middle inline-block min-w-full shadow sm:rounded-lg border-b border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-12">
+                  <input type="checkbox" id="selectAllPartsTable" onchange="toggleSelectAllPartsInTable(this.checked)" class="custom-checkbox" title="Select/Deselect all" checked>
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Part Name (Click to Edit)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">MPN</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Brand</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">eBay Avg</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sources</th>
+                <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Image <small>(Analysis Flags)</small></th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Compatibility (Scraped)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Scrape Errors</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-slate-200">`;
+
+      if (!fetchedPartsDetails || fetchedPartsDetails.length === 0) {
+        tableHtml += `<tr><td colspan="9" class="text-center py-4 text-slate-500">No part data to display. Select parts from Step 2 and click "Fetch Data".</td></tr>`;
+      } else {
+        fetchedPartsDetails.forEach((part, index) => {
+          if (!part) return;
+          const ebayScraped = part.ebay_scraped || {};
+          const ebayAvg = formatDollar(ebayScraped.avg);
+          const mpn = part.part_metadata?.mpn || '—';
+          const brand = part.part_metadata?.brand || '—';
+
+          let imgSrc = (appBaseUrlFromSettings || '') + '/static/no-image.png'; // Default
+          if (ebayScraped.image_path && !ebayScraped.image_path.startsWith('http')) { // Relative path
+            imgSrc = (appBaseUrlFromSettings || '') + (ebayScraped.image_path.startsWith('/') ? '' : '/') + 'uploads/' + ebayScraped.image_path;
+          } else if (ebayScraped.image_path) { // Absolute URL
+            imgSrc = ebayScraped.image_path;
+          }
+
+
+          const analysisFlags = ebayScraped.image_analysis_flags || [];
+          const flagsText = analysisFlags.length ? analysisFlags.join(', ') : 'N/A';
+
+          const compatibilityList = ebayScraped.compatibility_list || [];
+          let compatibilityHtml = 'N/A';
+          if (compatibilityList.length) {
+            compatibilityHtml = `<div class="compatibility-list"><ul>${compatibilityList.slice(0, 3).map(item => `<li>${item.length > 60 ? item.slice(0, 57) + '...' : item}</li>`).join('')}${compatibilityList.length > 3 ? `<li>...and ${compatibilityList.length - 3} more.</li>` : ''}</ul></div>`;
+          }
+
+          const scrapeError = ebayScraped.error || part.google_shopping?.error || "None";
+          const errorColor = scrapeError !== "None" ? "text-red-500" : "text-slate-500";
+
+          tableHtml += `
+                <tr class="hover:bg-slate-50 fetched-part-row" data-fetched-index="${index}">
+                  <td class="px-4 py-3 whitespace-nowrap"><input type="checkbox" class="custom-checkbox fetched-part-selector" value="${index}" checked></td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
+                    <span class="editable-part-name" onclick="makeStep3PartNameEditable(this, ${index})">${part.part || 'N/A'}</span>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">${mpn}</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">${brand}</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">${ebayAvg}</td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">
+                    ${ebayScraped.url ? `<a href="${ebayScraped.url}" target="_blank" class="text-blue-600 hover:text-blue-800">eBay Search</a>` : 'eBay N/A'}
+                    ${part.google_shopping?.url ? `<br><a href="${part.google_shopping.url}" target="_blank" class="text-green-600 hover:text-green-800">Google Shop</a>` : ''}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-center text-xs">
+                    <img src="${imgSrc}" alt="${part.part || 'Part image'}" class="h-12 w-12 object-contain rounded-md inline-block" onerror="this.onerror=null; this.src='${(appBaseUrlFromSettings || '')}/static/no-image.png'; this.alt='Image load error';">
+                    <span class="block text-slate-400 truncate w-24" title="${flagsText}">${flagsText}</span>
+                  </td>
+                  <td class="px-4 py-3 text-xs text-slate-600 compat-cell" style="max-width:200px;">${compatibilityHtml}</td>
+                  <td class="px-4 py-3 text-xs ${errorColor}" style="max-width:150px; overflow-wrap:break-word;">${scrapeError}</td>
+                </tr>`;
+        });
+      }
+      tableHtml += `</tbody></table></div>`;
+      container.innerHTML = tableHtml;
+      // Ensure "Select All" checkbox state is correct after re-render
+      const selectAllCb = document.getElementById("selectAllPartsTable");
+      if (selectAllCb) selectAllCb.checked = fetchedPartsDetails.length > 0 && fetchedPartsDetails.every((_, idx) => document.querySelector(`.fetched-part-selector[value="${idx}"]`)?.checked);
+    }
+
+    function toggleSelectAllPartsInTable(checked) {
+      document.querySelectorAll(".fetched-part-selector").forEach(cb => cb.checked = checked);
+    }
+
+    function deleteSelectedFetchedParts() {
+      const selectedCheckboxes = Array.from(document.querySelectorAll(".fetched-part-selector:checked"));
+      if (selectedCheckboxes.length === 0) {
+        alert("Please select parts from the table to delete.");
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete ${selectedCheckboxes.length} part(s) from the table? This action cannot be undone.`)) {
+        return;
+      }
+
+      const indicesToDelete = selectedCheckboxes.map(cb => parseInt(cb.value, 10)).sort((a, b) => b - a); // Sort descending to splice correctly
+
+      indicesToDelete.forEach(idx => {
+        const p = fetchedPartsDetails[idx];
+        if (p) {
+          logToPage(`🗑️ Removing fetched part "${p.part}" from table.`);
+          fetchedPartsDetails.splice(idx, 1);
+        }
+      });
+
+      renderPartsTable(); // Re-render the table
+      logToPage(`🗑️ ${indicesToDelete.length} part(s) deleted from table.`);
+
+      if (fetchedPartsDetails.length === 0) {
+        document.getElementById("results-display-section").classList.add("hidden");
+        document.getElementById("csv-download-link-container").innerHTML = "";
+        hideMessage("fetch-progress");
+      }
+      // If all are deselected or deleted, uncheck main checkbox and hide eBay section
+      if (!document.querySelector(".fetched-part-selector:checked")) {
+        const selectAllCb = document.getElementById("selectAllPartsTable");
+        if (selectAllCb) selectAllCb.checked = false;
+        document.getElementById("ebay-posting-section").classList.add("hidden");
+      }
+      generateCSVDownloadLink(); // Update CSV link
+    }
+
+    function generateCSVDownloadLink() {
+      const container = document.getElementById("csv-download-link-container");
+      container.innerHTML = ""; // Clear previous link
+
+      if (!fetchedPartsDetails || fetchedPartsDetails.length === 0) {
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      // Headers
+      const headers = ["Part Name", "MPN", "Brand", "eBay Avg Price", "eBay URL", "Google Shopping URL", "Image Path", "Compatibility", "Scrape Errors"];
+      csvContent += headers.join(",") + "\r\n";
+
+      fetchedPartsDetails.forEach(part => {
+        const ebayScraped = part.ebay_scraped || {};
+        const compatibility = (ebayScraped.compatibility_list || []).join("; "); // Join with semicolon for CSV cell
+        const row = [
+          `"${(part.part || '').replace(/"/g, '""')}"`, // Escape double quotes
+          `"${(part.part_metadata?.mpn || '').replace(/"/g, '""')}"`,
+          `"${(part.part_metadata?.brand || '').replace(/"/g, '""')}"`,
+          formatDollar(ebayScraped.avg).replace('$', ''), // Remove currency for numeric value
+          `"${(ebayScraped.url || '').replace(/"/g, '""')}"`,
+          `"${(part.google_shopping?.url || '').replace(/"/g, '""')}"`,
+          `"${(ebayScraped.image_path || '').replace(/"/g, '""')}"`,
+          `"${compatibility.replace(/"/g, '""')}"`,
+          `"${(ebayScraped.error || part.google_shopping?.error || 'None').replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(",") + "\r\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      const vehicleDesc = currentVehicle.vin !== "MANUAL_ENTRY" ? currentVehicle.vin : `${currentVehicle.year}_${currentVehicle.make}_${currentVehicle.model}`;
+      link.setAttribute("download", `Workspaceed_parts_${vehicleDesc}_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.className = "button-success text-sm";
+      link.textContent = "💾 Download Fetched Data as CSV";
+      container.appendChild(link);
+      logToPage("CSV-Download-Link generiert.");
+    }
+
+    // --- Step 4: eBay Posting ---
+    function preparePartsForPosting() {
+      const selectedCheckboxes = Array.from(document.querySelectorAll(".fetched-part-selector:checked"));
+      if (selectedCheckboxes.length === 0) {
+        alert("Select parts from the table (Step 3) to prepare for eBay listing.");
+        return;
+      }
+
+      logToPage(`📋 Preparing ${selectedCheckboxes.length} parts for eBay listing forms...`);
+      document.getElementById("ebay-posting-section").classList.remove("hidden");
+      const formContainer = document.getElementById("ebay-post-form-container");
+      formContainer.innerHTML = ""; // Clear previous forms
+      partsToPostDetailsGlobal = []; // Reset
+
+      selectedCheckboxes.forEach(cb => {
+        const idx = parseInt(cb.value, 10);
+        const detail = fetchedPartsDetails[idx];
+        if (!detail || !detail.part) {
+          logToPage(`⚠️ Missing data for selected part at original index ${idx}, skipping.`);
+          return;
+        }
+
+        // Determine eBay category ID from original AI suggestions or fallback
+        const originalName = detail.originalSuggestedPartName || detail.part;
+        let ebayCategoryId = detail.ebay_scraped?.ebay_category_id || "6030"; // Default fallback, or use one from scrape if available
+
+        // Try to find better category ID from AI suggestions if not already specific
+        if (aiSuggestedPartsData.categories && aiSuggestedPartsData.categories.length > 0) {
+          for (const cat of aiSuggestedPartsData.categories) {
+            if (cat.common_parts) {
+              const foundPartSuggestion = cat.common_parts.find(p => (typeof p === 'object' ? p.name : p).toLowerCase() === originalName.toLowerCase());
+              if (foundPartSuggestion) {
+                ebayCategoryId = (typeof foundPartSuggestion === 'object' ? foundPartSuggestion.specific_ebay_cat_id : null) || cat.id || ebayCategoryId;
+                break;
+              }
+            }
+          }
+        }
+
+        let imgUrl = (appBaseUrlFromSettings || '') + '/static/no-image.png';
+        if (detail.ebay_scraped?.image_path && !detail.ebay_scraped.image_path.startsWith('http')) {
+          imgUrl = (appBaseUrlFromSettings || '') + (detail.ebay_scraped.image_path.startsWith('/') ? '' : '/') + 'uploads/' + detail.ebay_scraped.image_path;
+        } else if (detail.ebay_scraped?.image_path) {
+          imgUrl = detail.ebay_scraped.image_path;
+        }
+        // Ensure HTTPS
+        if (imgUrl.startsWith('http:') && !imgUrl.startsWith('https:')) {
+          imgUrl = imgUrl.replace('http:', 'https:');
+        }
+
+
+        const postData = {
+          originalIndexGlobal: detail.originalIndexGlobal, // Reference to its position in fetchedPartsDetails
+          sku: `${(currentVehicle.vin || "MANUAL").slice(0, 8)}-${detail.part.slice(0, 15).replace(/\W+/g, "_")}-${Date.now().toString().slice(-5)}`.toUpperCase(),
+          title: `${currentVehicle.year || ''} ${currentVehicle.make || ''} ${currentVehicle.model || ''} ${detail.part}`.trim().slice(0, 80),
+          description: `Used ${detail.part} for ${currentVehicle.year || ''} ${currentVehicle.make || ''} ${currentVehicle.model || ''}${currentVehicle.submodel ? ' ' + currentVehicle.submodel : ''}. VIN: ${currentVehicle.vin !== "MANUAL_ENTRY" ? currentVehicle.vin : "N/A"}. Check compatibility. Part sourced from a vehicle, condition as shown in photos.`,
+          conditionDescription: "Used item. Shows signs of normal wear, please see photos for detailed condition. Fully functional unless otherwise stated.",
+          priceValue: String(detail.ebay_scraped?.avg || detail.ebay_scraped?.low || "29.99"),
+          quantity: 1,
+          condition: "USED_GOOD", // eBay condition ID (e.g., 3000 for Used)
+          imageUrls: [imgUrl], // Must be HTTPS
+          ebayCategoryId: ebayCategoryId,
+          aspects: { // Case-sensitive aspect names for eBay
+            "Manufacturer Part Number": detail.part_metadata?.mpn ? [detail.part_metadata.mpn] : [],
+            "Brand": detail.part_metadata?.brand ? [detail.part_metadata.brand] : []
+          },
+          // These are placeholders - get correct ones from your eBay account/settings
+          merchantLocationKey: "YOUR_MERCHANT_LOCATION_KEY", // e.g., from Seller Hub > Account > Addresses
+          listingPolicies: {
+            fulfillmentPolicyId: "YOUR_FULFILLMENT_POLICY_ID",
+            paymentPolicyId: "YOUR_PAYMENT_POLICY_ID",
+            returnPolicyId: "YOUR_RETURN_POLICY_ID"
+          },
+          marketplaceId: "EBAY_US" // Or EBAY_MOTORS for specific vehicle parts
+        };
+        partsToPostDetailsGlobal.push(postData);
+
+        // Render one simple form per item
+        formContainer.innerHTML += `
+            <div class="part-post-item bg-white p-4 my-4 rounded-lg shadow border border-slate-200" data-post-index="${partsToPostDetailsGlobal.length - 1}">
+              <h5 class="font-semibold mb-1 text-slate-700">${postData.title}</h5>
+              <p class="text-xs text-slate-500 mb-3">SKU: ${postData.sku}</p>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="label-text">Title:</label><input type="text" data-field="title" value="${postData.title}" maxlength="80" class="input-field"></div>
+                <div><label class="label-text">Price (USD):</label><input type="number" data-field="priceValue" value="${postData.priceValue}" step="0.01" class="input-field"></div>
+                <div><label class="label-text">Quantity:</label><input type="number" data-field="quantity" value="${postData.quantity}" class="input-field"></div>
+                <div><label class="label-text">MPN:</label><input type="text" data-field="aspects.Manufacturer Part Number" value="${postData.aspects['Manufacturer Part Number'][0] || ''}" class="input-field"></div>
+                <div><label class="label-text">Brand:</label><input type="text" data-field="aspects.Brand" value="${postData.aspects['Brand'][0] || ''}" class="input-field"></div>
+                <div><label class="label-text">eBay Category ID:</label><input type="text" data-field="ebayCategoryId" value="${postData.ebayCategoryId}" class="input-field"></div>
+              </div>
+              <div class="mt-3"><label class="label-text">Image URL (HTTPS):</label><input type="url" data-field="imageUrls.0" value="${postData.imageUrls[0]}" class="input-field"></div>
+              <div class="mt-3"><label class="label-text">Condition:</label>
+                <select data-field="condition" class="select-field">
+                    <option value="USED_GOOD" ${postData.condition === "USED_GOOD" ? "selected" : ""}>Used - Good (3000)</option>
+                    <option value="NEW" ${postData.condition === "NEW" ? "selected" : ""}>New (1000)</option>
+                    <option value="CERTIFIED_REFURBISHED" ${postData.condition === "CERTIFIED_REFURBISHED" ? "selected" : ""}>Certified Refurbished (2000)</option>
+                    <option value="SELLER_REFURBISHED" ${postData.condition === "SELLER_REFURBISHED" ? "selected" : ""}>Seller Refurbished (2500)</option>
+                    <option value="FOR_PARTS_OR_NOT_WORKING" ${postData.condition === "FOR_PARTS_OR_NOT_WORKING" ? "selected" : ""}>For Parts (7000)</option>
+                </select>
+              </div>
+              <div class="mt-3"><label class="label-text">Condition Description:</label><textarea data-field="conditionDescription" class="input-field h-20">${postData.conditionDescription}</textarea></div>
+              <div class="mt-3"><label class="label-text">Full Description:</label><textarea data-field="description" class="input-field h-24">${postData.description}</textarea></div>
+            </div>`;
+      });
+      // Add event listeners to update partsToPostDetailsGlobal on input change
+      formContainer.querySelectorAll('input, textarea, select').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const postIndex = parseInt(e.target.closest('.part-post-item').dataset.postIndex, 10);
+          const fieldPath = e.target.dataset.field;
+          let value = e.target.value;
+          if (e.target.type === 'number') value = parseFloat(value) || 0;
+
+          // Helper to set nested properties
+          const setNestedValue = (obj, path, val) => {
+            const keys = path.split('.');
+            let current = obj;
+            keys.forEach((key, index) => {
+              if (index === keys.length - 1) {
+                if (Array.isArray(current) && !isNaN(parseInt(key))) current[parseInt(key)] = val; // for imageUrls.0
+                else current[key] = val;
+              } else {
+                if (!current[key]) {
+                  if (!isNaN(parseInt(keys[index + 1]))) current[key] = []; else current[key] = {};
+                }
+                current = current[key];
+              }
+            });
+          };
+          setNestedValue(partsToPostDetailsGlobal[postIndex], fieldPath, value);
+        });
+      });
+      logToPage(`📝 Displayed review forms for ${partsToPostDetailsGlobal.length} parts.`);
+      document.getElementById('ebay-posting-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function confirmAndPostToEbay() {
+      if (partsToPostDetailsGlobal.length === 0) {
+        alert("No parts prepared for posting. Please go through Step 3 and 'Prepare for eBay Listing'.");
+        return;
+      }
+      if (!confirm(`Are you sure you want to attempt to post ${partsToPostDetailsGlobal.length} item(s) to eBay? Ensure all policy IDs and keys are correct.`)) {
+        return;
+      }
+
+      logToPage(`🚀 Attempting to post ${partsToPostDetailsGlobal.length} items to eBay...`);
+      showSpinner("ebay-post-status", `Posting ${partsToPostDetailsGlobal.length} items...`);
+      hideMessage("ebay-post-status"); // Clear previous messages specifically before spinner
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < partsToPostDetailsGlobal.length; i++) {
+        const itemData = partsToPostDetailsGlobal[i];
+        const itemTitle = itemData.title.slice(0, 30) + "..."; // for logging
+        showMessage("ebay-post-status", `📡 Posting item ${i + 1}/${partsToPostDetailsGlobal.length}: ${itemTitle}`, "info");
+        try {
+          const response = await fetch('/post-to-ebay', { // Replace with your actual backend endpoint
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemData)
+          });
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            logToPage(`✅ Successfully posted "${itemTitle}". eBay Item ID: ${result.ebayItemId || 'N/A'}`);
+            successCount++;
+            // Optionally mark as posted in UI or remove form
+            document.querySelector(`.part-post-item[data-post-index="${i}"]`)?.classList.add('border-green-500', 'opacity-50');
+
+          } else {
+            const errorMsg = result.message || `Error posting "${itemTitle}" (Status: ${response.status})`;
+            logToPage(`❌ ${errorMsg}`);
+            errorCount++;
+            document.querySelector(`.part-post-item[data-post-index="${i}"]`)?.classList.add('border-red-500');
+          }
+        } catch (err) {
+          logToPage(`❌ Network or system error posting "${itemTitle}": ${err.message}`);
+          errorCount++;
+          document.querySelector(`.part-post-item[data-post-index="${i}"]`)?.classList.add('border-red-500');
+        }
+        // Brief pause if desired
+        // await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      if (errorCount > 0) {
+        showMessage("ebay-post-status", `🏁 Posting complete. Success: ${successCount}, Errors: ${errorCount}. Check log for details.`, "error");
+      } else {
+        showMessage("ebay-post-status", `🎉 All ${successCount} items posted successfully!`, "success");
+      }
+      // partsToPostDetailsGlobal = []; // Clear after attempting to post
+    }
+
+    // --- DOMContentLoaded: Initialize UI ---
+    document.addEventListener('DOMContentLoaded', () => {
+      ['manual-entry', 'parts-suggestion-section', 'results-display-section', 'ebay-posting-section']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+
+      hideMessage("vin-result");
+      hideMessage("part-suggestion-status");
+      hideMessage("fetch-progress");
+      hideMessage("ebay-post-status");
+
+      fetchAppBaseUrl().then(() => {
+        logToPage("App UI Initialized. Ready to decode VIN or enter manually.");
+        // Set default placeholder image paths correctly if needed after base URL is fetched
+      });
+    });
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,190 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { vehicleId, format, includeImages = false } = await request.json()
+    
+    if (!vehicleId) {
+      return NextResponse.json(
+        { success: false, message: 'Vehicle ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!format || !['csv', 'pdf', 'json'].includes(format)) {
+      return NextResponse.json(
+        { success: false, message: 'Format must be csv, pdf, or json' },
+        { status: 400 }
+      )
+    }
+
+    // Get vehicle and parts data
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      include: {
+        parts: {
+          orderBy: { priority: 'desc' }
+        }
+      }
+    })
+
+    if (!vehicle) {
+      return NextResponse.json(
+        { success: false, message: 'Vehicle not found' },
+        { status: 404 }
+      )
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const filename = `${vehicle.vin}_parts_${timestamp}`
+
+    if (format === 'csv') {
+      return generateCSV(vehicle, filename)
+    } else if (format === 'json') {
+      return generateJSON(vehicle, filename)
+    } else if (format === 'pdf') {
+      return generatePDF(vehicle, filename)
+    }
+
+  } catch (error) {
+    console.error('Export error:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Export failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+function generateCSV(vehicle: any, filename: string) {
+  const csvHeaders = [
+    'Part Number',
+    'Description',
+    'Category',
+    'Priority',
+    'Price',
+    'eBay Listing ID',
+    'eBay URL',
+    'Image URL',
+    'Created Date'
+  ]
+
+  const csvRows = [
+    csvHeaders.join(','),
+    ...vehicle.parts.map((part: any) => [
+      `"${part.partNumber}"`,
+      `"${part.description}"`,
+      `"${part.category}"`,
+      `"${part.priority}"`,
+      part.price || '',
+      part.ebayListingId || '',
+      part.ebayUrl || '',
+      part.imageUrl || '',
+      new Date(part.createdAt).toISOString()
+    ].join(','))
+  ]
+
+  const csvContent = csvRows.join('\n')
+  const csvBuffer = Buffer.from(csvContent, 'utf-8')
+
+  return new NextResponse(csvBuffer, {
+    headers: {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="${filename}.csv"`,
+      'Content-Length': csvBuffer.length.toString()
+    }
+  })
+}
+
+function generateJSON(vehicle: any, filename: string) {
+  const exportData = {
+    vehicle: {
+      vin: vehicle.vin,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      engine: vehicle.engine,
+      transmission: vehicle.transmission,
+      driveType: vehicle.driveType,
+      fuelType: vehicle.fuelType,
+      bodyClass: vehicle.bodyClass
+    },
+    parts: vehicle.parts.map((part: any) => ({
+      partNumber: part.partNumber,
+      description: part.description,
+      category: part.category,
+      priority: part.priority,
+      price: part.price,
+      ebayListingId: part.ebayListingId,
+      ebayUrl: part.ebayUrl,
+      imageUrl: part.imageUrl,
+      createdAt: part.createdAt
+    })),
+    exportInfo: {
+      exportedAt: new Date().toISOString(),
+      totalParts: vehicle.parts.length,
+      totalEstimatedValue: vehicle.parts.reduce((sum: number, part: any) => sum + (part.price || 0), 0)
+    }
+  }
+
+  const jsonBuffer = Buffer.from(JSON.stringify(exportData, null, 2), 'utf-8')
+
+  return new NextResponse(jsonBuffer, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="${filename}.json"`,
+      'Content-Length': jsonBuffer.length.toString()
+    }
+  })
+}
+
+function generatePDF(vehicle: any, filename: string) {
+  // For now, return a simple text-based PDF
+  // In a real implementation, you'd use a library like puppeteer or jsPDF
+  
+  const pdfContent = `
+AI Parts Report
+Generated: ${new Date().toLocaleString()}
+
+Vehicle Information:
+VIN: ${vehicle.vin}
+Make: ${vehicle.make}
+Model: ${vehicle.model}
+Year: ${vehicle.year}
+Engine: ${vehicle.engine || 'N/A'}
+Transmission: ${vehicle.transmission || 'N/A'}
+Drive Type: ${vehicle.driveType || 'N/A'}
+Fuel Type: ${vehicle.fuelType || 'N/A'}
+
+Parts Summary:
+Total Parts: ${vehicle.parts.length}
+Estimated Total Value: $${vehicle.parts.reduce((sum: number, part: any) => sum + (part.price || 0), 0).toFixed(2)}
+
+Parts List:
+${vehicle.parts.map((part: any, index: number) => `
+${index + 1}. ${part.description}
+   Part Number: ${part.partNumber}
+   Category: ${part.category}
+   Priority: ${part.priority.toUpperCase()}
+   Price: ${part.price ? `$${part.price.toFixed(2)}` : 'N/A'}
+   eBay URL: ${part.ebayUrl || 'N/A'}
+`).join('\n')}
+
+---
+This report was generated by AI Parts App
+  `.trim()
+
+  const pdfBuffer = Buffer.from(pdfContent, 'utf-8')
+
+  return new NextResponse(pdfBuffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}.pdf"`,
+      'Content-Length': pdfBuffer.length.toString()
+    }
+  })
+}

@@ -1,0 +1,75 @@
+part,ebay_low,ebay_avg,offerup_low,offerup_high,craigslist_low,craigslist_high,google_low,google_avg,image_url
+Alternator,20.0,65.09,0,0,0,0,0,0,saved_images/MANUAL_Alternator_20250427230834.jpg
+Starter,20.0,55.27,0,0,0,0,0,0,saved_images/MANUAL_Starter_20250427230843.jpg
+Fuel Pump,20.0,71.42,0,0,0,0,0,0,saved_images/MANUAL_Fuel_Pump_20250427230851.jpg
+Oil Pump,20.0,258.51,0,0,0,0,0,0,saved_images/MANUAL_Oil_Pump_20250427230900.jpg
+Engine Mount,15.0,43.96,0,0,0,0,0,0,saved_images/MANUAL_Engine_Mount_20250427230914.jpg
+Turbocharger,20.0,161.94,0,0,0,0,0,0,saved_images/MANUAL_Turbocharger_20250427230923.jpg
+Timing Cover,20.0,95.51,0,0,0,0,0,0,saved_images/MANUAL_Timing_Cover_20250427230932.jpg
+Valve Cover,20.0,78.67,0,0,0,0,0,0,saved_images/MANUAL_Valve_Cover_20250427230940.jpg
+Crankshaft,20.0,204.68,0,0,0,0,0,0,saved_images/MANUAL_Crankshaft_20250427230948.jpg
+Camshaft,12.0,226.0,0,0,0,0,0,0,saved_images/MANUAL_Camshaft_20250427230959.jpg
+Pistons,20.0,109.41,0,0,0,0,0,0,saved_images/MANUAL_Pistons_20250427231011.jpg
+Shock Absorber,20.0,52.5,0,0,0,0,0,0,saved_images/MANUAL_Shock_Absorber_20250427231021.jpg
+Strut,20.0,112.63,0,0,0,0,0,0,saved_images/MANUAL_Strut_20250427231029.jpg
+Coil Spring,20.0,79.94,0,0,0,0,0,0,saved_images/MANUAL_Coil_Spring_20250427231038.jpg
+Control Arm,20.0,73.33,0,0,0,0,0,0,saved_images/MANUAL_Control_Arm_20250427231046.jpg
+Ball Joint,20.0,115.94,0,0,0,0,0,0,saved_images/MANUAL_Ball_Joint_20250427231055.jpg
+Tie Rod,20.0,88.1,0,0,1.0,802005.0,0,0,saved_images/MANUAL_Tie_Rod_20250427231103.jpg
+Spindle,20.0,70.26,0,0,0,0,0,0,saved_images/MANUAL_Spindle_20250427231112.jpg
+Bumper Front,20.0,235.4,0,0,0,0,0,0,saved_images/MANUAL_Bumper_Front_20250427231120.jpg
+Bumper Rear,20.0,350.44,0,0,0,0,0,0,saved_images/MANUAL_Bumper_Rear_20250427231128.jpg
+Fender,16.98,221.89,0,0,0,0,0,0,saved_images/MANUAL_Fender_20250427231137.jpg
+Door Handle,10.0,67.25,0,0,0,0,0,0,saved_images/MANUAL_Door_Handle_20250427231146.jpg
+Door,20.0,385.92,0,0,395.0,19300.0,0,0,saved_images/MANUAL_Door_20250427231154.jpg
+Quarter Panel,20.0,92.27,0,0,0,0,0,0,saved_images/MANUAL_Quarter_Panel_20250427231203.jpg
+Hood,20.0,255.91,0,0,0,0,0,0,saved_images/MANUAL_Hood_20250427231212.jpg
+Grille,6.0,96.25,0,0,0,0,0,0,saved_images/MANUAL_Grille_20250427231220.jpg
+Mirror,20.0,97.05,0,0,5.0,5001961.0,0,0,saved_images/MANUAL_Mirror_20250427231228.jpg
+Roof Rack,11.65,133.57,0,0,0,0,0,0,saved_images/MANUAL_Roof_Rack_20250427231237.jpg
+Dashboard,15.0,191.05,0,0,0,0,0,0,saved_images/MANUAL_Dashboard_20250427231246.jpg
+Seats,20.0,194.92,0,0,0,0,0,0,saved_images/MANUAL_Seats_20250427231254.jpg
+Sun Visor,20.0,67.43,0,0,0,0,0,0,saved_images/MANUAL_Sun_Visor_20250427231303.jpg
+Carpet,20.0,80.65,0,0,0,0,0,0,saved_images/MANUAL_Carpet_20250427231312.jpg
+Headliner,15.0,31.42,0,0,0,0,79.99,433.09,saved_images/MANUAL_Headliner_20250427231321.jpg
+Interior Door Handle,15.0,47.81,0,0,0,0,0,0,saved_images/MANUAL_Interior_Door_Handle_20250427231330.jpg
+Console,20.0,110.23,0,0,0,0,0,0,saved_images/MANUAL_Console_20250427231338.jpg
+Glove Box,15.0,46.19,0,0,0,0,0,0,saved_images/MANUAL_Glove_Box_20250427231347.jpg
+Transmission,20.0,863.12,0,0,0,0,0,0,saved_images/MANUAL_Transmission_20250427231356.jpg
+Driveshaft,20.0,96.22,0,0,0,0,35.0,147.14,saved_images/MANUAL_Driveshaft_20250427231408.jpg
+Differential,8.0,300.38,0,0,0,0,0,0,saved_images/MANUAL_Differential_20250427231418.jpg
+CV Axle,20.0,72.24,0,0,0,0,0,0,saved_images/MANUAL_CV_Axle_20250427231426.jpg
+Flywheel,20.0,52.09,0,0,20.0,5001964.0,0,0,saved_images/MANUAL_Flywheel_20250427231435.jpg
+Battery,9.95,43.25,0,0,0,0,0,0,saved_images/MANUAL_Battery_20250427231444.jpg
+Alternator,20.0,65.09,0,0,0,0,0,0,saved_images/MANUAL_Alternator_20250427231452.jpg
+ECU,11.95,36.96,0,0,0,0,0,0,saved_images/MANUAL_ECU_20250427231500.jpg
+Ignition Coil,20.0,33.81,0,0,0,0,0,0,saved_images/MANUAL_Ignition_Coil_20250427231509.jpg
+O2 Sensor,12.0,32.15,0,0,10.0,1551965.0,0,0,saved_images/MANUAL_O2_Sensor_20250427231518.jpg
+Mass Airflow Sensor,20.0,47.57,0,0,0,0,0,0,saved_images/MANUAL_Mass_Airflow_Sensor_20250427231527.jpg
+Throttle Position Sensor,20.0,46.56,0,0,0,0,0,0,saved_images/MANUAL_Throttle_Position_Sensor_20250427231535.jpg
+VVT Solenoid,7.9,40.8,0,0,0,0,0,0,saved_images/MANUAL_VVT_Solenoid_20250427231544.jpg
+ABS Module,20.0,39.47,0,0,0,0,0,0,saved_images/MANUAL_ABS_Module_20250427231553.jpg
+Radiator,20.0,92.01,0,0,0,0,0,0,saved_images/MANUAL_Radiator_20250427231601.jpg
+Water Pump,19.9,48.17,0,0,0,0,0,0,saved_images/MANUAL_Water_Pump_20250427231612.jpg
+Cooling Fan,20.0,104.01,0,0,0,0,0,0,saved_images/MANUAL_Cooling_Fan_20250427231625.jpg
+AC Condenser,20.0,97.49,0,0,0,0,0,0,saved_images/MANUAL_AC_Condenser_20250427231634.jpg
+Heater Core,20.0,55.97,0,0,0,0,0,0,saved_images/MANUAL_Heater_Core_20250427231642.jpg
+Reservoir Tank,20.0,73.46,0,0,0,0,0,0,saved_images/MANUAL_Reservoir_Tank_20250427231651.jpg
+Thermostat,20.0,31.64,0,0,0,0,0,0,saved_images/MANUAL_Thermostat_20250427231700.jpg
+Blower Motor,20.0,82.79,0,0,0,0,0,0,saved_images/MANUAL_Blower_Motor_20250427231708.jpg
+Heater Control,20.0,37.02,0,0,0,0,0,0,saved_images/MANUAL_Heater_Control_20250427231717.jpg
+Climate Control Module,8.5,35.7,0,0,0,0,0,0,saved_images/MANUAL_Climate_Control_Module_20250427231725.jpg
+Fuel Tank,20.0,286.21,0,0,0,0,0,0,saved_images/MANUAL_Fuel_Tank_20250427231733.jpg
+Fuel Line,6.0,90.67,0,0,70.99,65002018.0,0,0,saved_images/MANUAL_Fuel_Line_20250427231744.jpg
+Carburetor,20.0,84.67,0,0,0,0,0,0,saved_images/MANUAL_Carburetor_20250427231754.jpg
+Throttle Body,20.0,49.23,0,0,0,0,0,0,saved_images/MANUAL_Throttle_Body_20250427231802.jpg
+Catalytic Converter,20.0,321.82,0,0,0,0,0,0,saved_images/MANUAL_Catalytic_Converter_20250427231811.jpg
+Muffler,20.0,200.9,0,0,0,0,0,0,saved_images/MANUAL_Muffler_20250427231820.jpg
+Exhaust Manifold,19.9,53.91,0,0,0,0,0,0,saved_images/MANUAL_Exhaust_Manifold_20250427231828.jpg
+O2 Sensor,12.0,32.15,0,0,0,0,0,0,saved_images/MANUAL_O2_Sensor_20250427231837.jpg
+Downpipe,20.0,340.96,0,0,0,0,0,0,saved_images/MANUAL_Downpipe_20250427231846.jpg
+Windshield Washer Pump,15.98,39.98,0,0,0,0,0,0,saved_images/MANUAL_Windshield_Washer_Pump_20250427231855.jpg
+Spare Tire,20.0,143.0,0,0,35.0,12018.0,50.0,2459.39,saved_images/MANUAL_Spare_Tire_20250427231903.jpg
+Jack,20.0,87.24,0,0,0,0,0,0,saved_images/MANUAL_Jack_20250427231912.jpg
+Tool Kit,10.0,65.17,0,0,0,0,0,0,saved_images/MANUAL_Tool_Kit_20250427231921.jpg
+Floor Mats,15.0,58.66,0,0,0,0,0,0,saved_images/MANUAL_Floor_Mats_20250427231929.jpg

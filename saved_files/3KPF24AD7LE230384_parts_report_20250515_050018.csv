@@ -1,0 +1,5 @@
+Part Name,eBay Scraped Avg Price,eBay Scraped Low Price,eBay Scraped URL,Scraped Image Path (Local),eBay Scrape Error,Google Shopping Avg Price,Google Shopping URL,Google Scrape Error,AI Image Valid
+A/C Evaporators,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20A/C%20Evaporators%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Cabin Air Filters,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Cabin%20Air%20Filters%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+ABS & Stability Hydraulic Units,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20ABS%20%26%20Stability%20Hydraulic%20Units%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+ABS Control Modules,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20ABS%20Control%20Modules%20used%20price&tbm=shop,Google Shopping scraping not implemented,

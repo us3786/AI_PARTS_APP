@@ -1,0 +1,5 @@
+Part Name,eBay Scraped Avg Price,eBay Scraped Low Price,eBay Scraped URL,Scraped Image Path (Local),eBay Scrape Error,Google Shopping Avg Price,Google Shopping URL,Google Scrape Error,AI Image Valid
+Belts,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Belts%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Idlers & Tensioners,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Idlers%20%26%20Tensioners%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Pulleys,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20Pulleys%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+ENGINE,,,,,Selenium driver failed to initialize for eBay scrape.,,https://www.google.com/search?q=2020%20KIA%20Forte%20ENGINE%20used%20price&tbm=shop,Google Shopping scraping not implemented,

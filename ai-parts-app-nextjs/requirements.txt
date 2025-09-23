@@ -1,0 +1,75 @@
+# AI Parts App - Next.js Requirements
+# This file lists all the dependencies and setup requirements for the AI Parts Application
+
+## Core Framework
+Next.js 15.5.3 - React framework with App Router
+React 19.1.0 - UI library
+TypeScript 5.x - Type safety
+
+## Database & ORM
+Prisma 6.16.2 - Database ORM and migrations
+SQLite - Local database (file:./dev.db)
+
+## UI Components & Styling
+@radix-ui/* - Accessible UI components
+Tailwind CSS 4.x - Utility-first CSS framework
+Lucide React - Icon library
+Framer Motion - Animation library
+
+## State Management & Data Fetching
+@tanstack/react-query - Server state management
+Zustand - Client state management
+
+## Development Tools
+ESLint - Code linting
+TSX - TypeScript execution for scripts
+PostCSS - CSS processing
+
+## External APIs
+eBay API - OAuth 2.0 integration for listing management
+NHTSA API - VIN decoding service
+
+## File Structure
+ai-parts-app-nextjs/
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── api/            # API routes
+│   │   └── page.tsx        # Main page
+│   ├── components/         # React components
+│   ├── lib/               # Utility libraries
+│   └── types/             # TypeScript definitions
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   ├── seed.ts           # Database seeding
+│   └── complete-parts-master-data.ts
+├── public/               # Static assets
+├── package.json         # Dependencies
+└── .env                # Environment variables
+
+## Setup Commands
+npm install              # Install dependencies
+npm run db:push         # Initialize database
+npm run db:seed         # Seed with parts data
+npm run dev            # Start development server
+
+## Environment Variables Required
+DATABASE_URL="file:./dev.db"
+NEXT_PUBLIC_NHTSA_API_BASE_URL="https://vpic.nhtsa.dot.gov/api/vehicles/"
+NEXT_PUBLIC_APP_BASE_URL="http://localhost:3000"
+EBAY_CLIENT_ID="your_ebay_client_id"
+EBAY_CLIENT_SECRET="your_ebay_client_secret"
+EBAY_REDIRECT_URI="your_ngrok_url/api/ebay/callback"
+EBAY_SCOPES="https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory https://api.ebay.com/oauth/api_scope/sell.account https://api.ebay.com/oauth/api_scope/sell.fulfillment https://api.ebay.com/oauth/api_scope/sell.marketing"
+
+## Features
+- VIN Decoding (NHTSA API)
+- Parts Population (290+ automotive parts)
+- Price Research (Multi-source)
+- Image Hunting (AI-powered)
+- eBay Integration (OAuth + Listing)
+- Bulk Operations
+- Analytics Dashboard
+- Export Functions (CSV, PDF, JSON)
+
+## Backup Files Preserved
+backup/ - All original Python Flask application files preserved

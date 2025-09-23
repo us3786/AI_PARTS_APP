@@ -1,0 +1,266 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enhanced Vehicle Model with comprehensive specifications
+model Vehicle {
+  id                String   @id @default(cuid())
+  vin               String   @unique
+  make              String
+  model             String
+  year              Int
+  trimLevel         String?
+  engine            String?
+  engineSize        String?
+  engineType        String?
+  transmission      String?
+  transmissionType  String?
+  driveType         String?
+  fuelType          String?
+  bodyClass         String?
+  bodyStyle         String?
+  doors             Int?
+  cylinders         Int?
+  displacement      Float?
+  horsepower        Int?
+  torque            Int?
+  specifications    Json?    // Store detailed technical specifications
+  vehicleImages     Json?    // Store array of vehicle images
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  parts             Part[]
+  reports           Report[]
+  partsInventory    PartsInventory[]
+  
+  @@map("vehicles")
+}
+
+// Master Parts Catalog - The 420+ standard parts
+model PartsMaster {
+  id                String   @id @default(cuid())
+  partName          String
+  category          String
+  subCategory       String?
+  oemPartNumber     String?
+  aftermarketNumbers Json?   // Array of aftermarket part numbers
+  vehicleSpecific   Boolean  @default(false)
+  fitmentData       Json?    // Vehicle compatibility data
+  estimatedValue    Float?
+  resaleValue       Float?
+  marketDemand      String?  // High, Medium, Low
+  weight            Float?   // Shipping weight
+  dimensions        Json?    // Length, Width, Height
+  specifications    Json?    // Technical specifications
+  images            Json?    // Default part images
+  notes             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  partsInventory    PartsInventory[]
+  priceResearch     PriceResearch[]
+  ebayListings      EbayListing[]
+  
+  @@map("parts_master")
+}
+
+// Parts Inventory - Actual parts from specific vehicles
+model PartsInventory {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  partsMasterId   String
+  condition       String   @default("good") // Excellent, Good, Fair, Poor
+  location        String?  // Physical location/storage
+  acquiredDate    DateTime?
+  acquiredPrice   Float?
+  currentValue    Float?
+  status          String   @default("available") // Available, Listed, Sold, Reserved
+  notes           String?
+  customImages    Json?    // Additional images specific to this part instance
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  vehicle         Vehicle @relation(fields: [vehicleId], references: [id])
+  partsMaster     PartsMaster @relation(fields: [partsMasterId], references: [id])
+  ebayListings    EbayListing[]
+  
+  @@map("parts_inventory")
+}
+
+// Price Research - Market data for parts
+model PriceResearch {
+  id                String   @id @default(cuid())
+  partsMasterId     String
+  partName          String
+  category          String
+  subCategory       String?
+  make              String?
+  model             String?
+  year              Int?
+  source            String   // eBay, AutoZone, RockAuto, etc.
+  price             Float
+  currency          String   @default("USD")
+  url               String?
+  images            Json?    // Images from this source
+  marketTrend       String?  // rising, stable, falling
+  confidence        Int?     // Confidence percentage
+  sources           Int?     // Number of sources
+  averagePrice      Float?   // Average price from research
+  minPrice          Float?   // Minimum price found
+  maxPrice          Float?   // Maximum price found
+  medianPrice       Float?   // Median price
+  marketAnalysis    Json?    // Complete market analysis data
+  competitorAnalysis Json?   // Competitor pricing analysis
+  researchDate      DateTime @default(now())
+  isActive          Boolean  @default(true)
+  
+  // Relations
+  partsMaster       PartsMaster @relation(fields: [partsMasterId], references: [id])
+  
+  @@map("price_research")
+}
+
+// eBay Listing Management
+model EbayListing {
+  id                String   @id @default(cuid())
+  partsInventoryId  String?
+  partsMasterId     String
+  ebayItemId        String?  // eBay's item ID once listed
+  title             String
+  description       String?
+  categoryId        String?
+  price             Float
+  currency          String   @default("USD")
+  images            Json?    // Listing images
+  status            String   @default("draft") // Draft, Listed, Ended, Sold
+  listingDate       DateTime?
+  endDate           DateTime?
+  bulkOperationId   String?  // For tracking bulk operations
+  performanceData   Json?    // Views, watchers, sales data
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  partsInventory    PartsInventory? @relation(fields: [partsInventoryId], references: [id])
+  partsMaster       PartsMaster @relation(fields: [partsMasterId], references: [id])
+  bulkOperation     BulkOperation? @relation(fields: [bulkOperationId], references: [id])
+  
+  @@map("ebay_listings")
+}
+
+// Bulk Operations - Managing large listing operations
+model BulkOperation {
+  id                String   @id @default(cuid())
+  operationName     String
+  selectedParts     Json     // Array of selected part IDs
+  listingTemplate   Json?    // Template configuration
+  pricingStrategy   Json?    // Pricing strategy settings
+  schedulingOptions Json?    // Scheduling configuration
+  status            String   @default("pending") // Pending, In Progress, Completed, Failed
+  progress          Float    @default(0) // 0-100
+  totalParts        Int
+  processedParts    Int      @default(0)
+  successfulListings Int     @default(0)
+  failedListings    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  ebayListings      EbayListing[]
+  
+  @@map("bulk_operations")
+}
+
+// Legacy Part model for backward compatibility
+model Part {
+  id              String   @id @default(cuid())
+  partNumber      String
+  description     String
+  category        String
+  priority        String   @default("medium") // high, medium, low
+  price           Float?
+  imageUrl        String?
+  ebayListingId   String?
+  ebayUrl         String?
+  vehicleId       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  reportItems     ReportItem[]
+  
+  @@map("parts")
+}
+
+model Report {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  status          String   @default("pending") // pending, processing, completed, failed
+  progress        Int      @default(0) // 0-100
+  vehicleId       String
+  totalParts      Int      @default(0)
+  processedParts  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  items           ReportItem[]
+  
+  @@map("reports")
+}
+
+model ReportItem {
+  id              String   @id @default(cuid())
+  reportId        String
+  partId          String
+  status          String   @default("pending") // pending, found, not_found, error
+  ebayData        String?  // JSON string of eBay data
+  processingTime  Int?     // milliseconds
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  part            Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+  
+  @@unique([reportId, partId])
+  @@map("report_items")
+}
+
+model Settings {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("settings")
+}
+
+model EbayTokens {
+  id              String   @id @default(cuid())
+  accessToken     String
+  refreshToken    String?
+  expiresAt       DateTime
+  tokenType       String   @default("Bearer")
+  scope           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("ebay_tokens")
+}

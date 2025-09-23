@@ -1,0 +1,6 @@
+Part Name,eBay Scraped Avg Price,eBay Scraped Low Price,eBay Scraped URL,Scraped Image Path (Local),eBay Scrape Error,Google Shopping Avg Price,Google Shopping URL,Google Scrape Error,AI Image Valid
+Brake Boosters,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Brake%20Boosters%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Brake Cables,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Brake%20Cables%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Brake Component Kits,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Brake%20Component%20Kits%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Brake Disc Rotors,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Brake%20Disc%20Rotors%20used%20price&tbm=shop,Google Shopping scraping not implemented,
+Brake Drums,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Brake%20Drums%20used%20price&tbm=shop,Google Shopping scraping not implemented,

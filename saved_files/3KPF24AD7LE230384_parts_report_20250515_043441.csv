@@ -1,0 +1,7 @@
+Part Name,eBay Scraped Avg Price,eBay Scraped Low Price,eBay Scraped URL,Scraped Image Path (Local),eBay Scrape Error,Google Shopping Avg Price,Google Shopping URL,Google Scrape Error,AI Image Valid
+Debug Serpentine Belt,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Serpentine%20Belt%20used%20price&tbm=shop,Google Shopping not implemented,
+Debug Tensioner,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Tensioner%20used%20price&tbm=shop,Google Shopping not implemented,
+Debug Brake Pad,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Brake%20Pad%20used%20price&tbm=shop,Google Shopping not implemented,
+Debug Rotor,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Rotor%20used%20price&tbm=shop,Google Shopping not implemented,
+Debug Standalone Part A,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Standalone%20Part%20A%20used%20price&tbm=shop,Google Shopping not implemented,
+Debug Standalone Part B,,,,,Selenium driver failed,,https://www.google.com/search?q=2020%20KIA%20Forte%20Debug%20Standalone%20Part%20B%20used%20price&tbm=shop,Google Shopping not implemented,
