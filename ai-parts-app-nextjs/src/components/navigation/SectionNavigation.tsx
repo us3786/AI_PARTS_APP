@@ -7,11 +7,12 @@ import {
   Package, 
   DollarSign, 
   Upload, 
-  BarChart3, 
-  ExternalLink,
+  Image as ImageIcon,
+  ShoppingCart,
   ChevronDown,
   Menu,
-  X
+  X,
+  Package2
 } from 'lucide-react'
 
 interface SectionNavigationProps {
@@ -41,6 +42,20 @@ const sections = [
     bgColor: 'bg-green-50 hover:bg-green-100'
   },
   {
+    id: 'vehicle-photos',
+    label: 'Vehicle Photos',
+    icon: ImageIcon,
+    color: 'text-cyan-600',
+    bgColor: 'bg-cyan-50 hover:bg-cyan-100'
+  },
+  {
+    id: 'image-management',
+    label: 'Image Management',
+    icon: ImageIcon,
+    color: 'text-teal-600',
+    bgColor: 'bg-teal-50 hover:bg-teal-100'
+  },
+  {
     id: 'price-research',
     label: 'Price Research',
     icon: DollarSign,
@@ -56,24 +71,10 @@ const sections = [
   },
   {
     id: 'ebay-preview',
-    label: 'eBay Preview',
-    icon: ExternalLink,
+    label: 'eBay Listings',
+    icon: ShoppingCart,
     color: 'text-orange-600',
     bgColor: 'bg-orange-50 hover:bg-orange-100'
-  },
-  {
-    id: 'listing-performance',
-    label: 'Performance',
-    icon: BarChart3,
-    color: 'text-red-600',
-    bgColor: 'bg-red-50 hover:bg-red-100'
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: BarChart3,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50 hover:bg-indigo-100'
   }
 ]
 

@@ -34,8 +34,10 @@ import {
   Eye,
   Edit,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  Upload
 } from 'lucide-react'
+import { SellOnEbay } from '@/components/forms/SellOnEbay'
 
 interface EnhancedPartsDashboardProps {
   vehicleId: string
@@ -692,6 +694,23 @@ export function EnhancedPartsDashboard({ vehicleId, className }: EnhancedPartsDa
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <SellOnEbay 
+                          partId={item.partsMaster.id}
+                          vehicleId={vehicleId}
+                          partName={item.partsMaster.partName}
+                          partPrice={item.currentValue || item.partsMaster.estimatedValue}
+                          partCondition={item.condition}
+                          trigger={
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              title="Sell on eBay"
+                              className="transition-all duration-200 hover:scale-110 hover:bg-green-50 hover:text-green-600 active:scale-95"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
                         <Button 
                           variant="ghost" 
                           size="sm"

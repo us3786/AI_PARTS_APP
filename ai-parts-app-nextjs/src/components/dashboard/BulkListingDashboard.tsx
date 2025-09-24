@@ -44,154 +44,271 @@ import {
   Eye,
   TrendingUp,
   Clock,
-  Target
+  Target,
+  Upload,
+  Edit,
+  Save,
+  X,
+  Bot,
+  Car,
+  Wrench,
+  ImageIcon,
+  FileText
 } from 'lucide-react'
+import { PartImageGallery } from '@/components/forms/PartImageGallery'
+import { EbayListingTemplate } from '@/components/forms/EbayListingTemplate'
 
 interface BulkListingDashboardProps {
   vehicleId: string
   className?: string
 }
 
-interface BulkOperation {
+interface Part {
   id: string
-  operationName: string
+  partsMaster: {
+    id: string
+    partName: string
+    category: string
+    subCategory?: string
+    estimatedValue: number
+    images?: any[]
+  }
+  currentValue: number
+  condition: string
   status: string
-  progress: number
-  totalParts: number
-  processedParts: number
-  successfulListings: number
-  failedListings: number
-  createdAt: Date
-  updatedAt: Date
-  ebayListings: any[]
+  notes?: string
 }
 
-interface ListingResult {
+interface ListingItem {
   partId: string
   partName: string
-  success: boolean
-  ebayItemId?: string
-  ebayUrl?: string
-  listingPrice?: number
-  originalPrice?: number
-  error?: string
+  category: string
+  condition: string
+  price: number
+  title: string
+  description: string
+  keywords: string
+  selected: boolean
+  editing: boolean
 }
 
-interface ListingTemplate {
-  returnPolicy: string
-  shippingPolicy: string
-  paymentPolicy: string
-  descriptionTemplate: string
-  titleTemplate: string
-}
-
-interface PricingStrategy {
-  discountPercentage: number
-  minimumPrice: number
-  maximumPrice: number
-  pricingMethod: 'market' | 'fixed' | 'competitive'
+interface VehicleInfo {
+  id: string
+  make: string
+  model: string
+  year: number
+  engine?: string
+  drivetrain?: string
+  transmission?: string
+  fuelType?: string
+  vin: string
 }
 
 export function BulkListingDashboard({ vehicleId, className }: BulkListingDashboardProps) {
-  const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set())
-  const [availableParts, setAvailableParts] = useState<any[]>([])
-  const [bulkOperations, setBulkOperations] = useState<BulkOperation[]>([])
+  const [parts, setParts] = useState<Part[]>([])
+  const [vehicle, setVehicle] = useState<VehicleInfo | null>(null)
+  const [listingItems, setListingItems] = useState<ListingItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [currentOperation, setCurrentOperation] = useState<string>('')
-  const [showListingDialog, setShowListingDialog] = useState(false)
-  const [listingTemplate, setListingTemplate] = useState<ListingTemplate>({
-    returnPolicy: '30',
-    shippingPolicy: 'standard',
-    paymentPolicy: 'paypal',
-    descriptionTemplate: 'detailed',
-    titleTemplate: 'professional'
-  })
-  const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy>({
-    discountPercentage: 0,
-    minimumPrice: 10,
-    maximumPrice: 10000,
-    pricingMethod: 'competitive'
-  })
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [bulkOperation, setBulkOperation] = useState<any>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Settings
+  const [defaultShipping, setDefaultShipping] = useState(15.99)
+  const [defaultHandlingTime, setDefaultHandlingTime] = useState('1')
+  const [defaultReturnPolicy, setDefaultReturnPolicy] = useState('30')
   const [maxConcurrent, setMaxConcurrent] = useState(3)
 
-  const fetchAvailableParts = async () => {
-    try {
-      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
-      const data = await response.json()
+  const fetchVehicleAndParts = async () => {
+    setLoading(true)
+    setError(null)
 
-      if (data.success) {
-        // Filter for parts that can be listed (available status)
-        const listableParts = data.inventory.filter((part: any) => 
+    try {
+      // Fetch vehicle info
+      const vehicleResponse = await fetch(`/api/vehicles/${vehicleId}`)
+      const vehicleData = await vehicleResponse.json()
+      
+      if (vehicleData.success) {
+        setVehicle(vehicleData.vehicle)
+      }
+
+      // Fetch parts
+      const partsResponse = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+      const partsData = await partsResponse.json()
+
+      if (partsData.success) {
+        const availableParts = partsData.inventory.filter((part: Part) => 
           part.status === 'available' && part.currentValue > 0
         )
-        setAvailableParts(listableParts)
-      }
-    } catch (error) {
-      console.error('Error fetching available parts:', error)
-    }
-  }
+        setParts(availableParts)
 
-  const fetchBulkOperations = async () => {
-    try {
-      const response = await fetch(`/api/ebay/listings/bulk?vehicleId=${vehicleId}`)
-      const data = await response.json()
-
-      if (data.success) {
-        setBulkOperations(data.operations || [])
+        // Initialize listing items
+        const items: ListingItem[] = availableParts.map((part: Part) => ({
+          partId: part.id,
+          partName: part.partsMaster.partName,
+          category: part.partsMaster.category,
+          condition: 'used', // Default to used as requested
+          price: part.currentValue || part.partsMaster.estimatedValue || 0,
+          title: '',
+          description: '',
+          keywords: '',
+          selected: false,
+          editing: false
+        }))
+        setListingItems(items)
       }
-    } catch (error) {
-      console.error('Error fetching bulk operations:', error)
+    } catch (err) {
+      setError('Failed to fetch vehicle and parts data')
+      console.error('Fetch error:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
     if (vehicleId) {
-      fetchAvailableParts()
-      fetchBulkOperations()
+      fetchVehicleAndParts()
     }
   }, [vehicleId])
 
-  const handleSelectPart = (partId: string) => {
-    const newSelected = new Set(selectedParts)
-    if (newSelected.has(partId)) {
-      newSelected.delete(partId)
-    } else {
-      newSelected.add(partId)
+  const generateAIDescriptions = async (selectedOnly = false) => {
+    if (!vehicle) {
+      setError('Vehicle information not available')
+      return
     }
-    setSelectedParts(newSelected)
+
+    setAiGenerating(true)
+    setError(null)
+
+    try {
+      const itemsToProcess = selectedOnly 
+        ? listingItems.filter(item => item.selected)
+        : listingItems
+
+      if (itemsToProcess.length === 0) {
+        setError('No items to process')
+        return
+      }
+
+      // Process items in batches to avoid overwhelming the API
+      const batchSize = 5
+      for (let i = 0; i < itemsToProcess.length; i += batchSize) {
+        const batch = itemsToProcess.slice(i, i + batchSize)
+        
+        const promises = batch.map(async (item) => {
+          try {
+            const response = await fetch('/api/ai/description', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                partName: item.partName,
+                make: vehicle.make,
+                model: vehicle.model,
+                year: vehicle.year,
+                engine: vehicle.engine,
+                drivetrain: vehicle.drivetrain,
+                condition: item.condition,
+                category: item.category
+              })
+            })
+
+            const data = await response.json()
+            
+            if (data.success) {
+              return {
+                ...item,
+                title: data.title,
+                description: data.description,
+                keywords: data.keywords
+              }
+            }
+            return item
+          } catch (err) {
+            console.error(`Error generating description for ${item.partName}:`, err)
+            return item
+          }
+        })
+
+        const updatedBatch = await Promise.all(promises)
+        
+        // Update state with new batch
+        setListingItems(prev => 
+          prev.map(item => {
+            const updated = updatedBatch.find(batchItem => batchItem.partId === item.partId)
+            return updated || item
+          })
+        )
+
+        // Small delay between batches
+        if (i + batchSize < itemsToProcess.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
+
+      setSuccess(`Generated AI descriptions for ${itemsToProcess.length} parts`)
+    } catch (err) {
+      setError('Failed to generate AI descriptions')
+      console.error('AI generation error:', err)
+    } finally {
+      setAiGenerating(false)
+    }
   }
 
-  const handleSelectAll = () => {
-    if (selectedParts.size === availableParts.length) {
-      setSelectedParts(new Set())
-    } else {
-      setSelectedParts(new Set(availableParts.map(part => part.id)))
-    }
+  const updateListingItem = (partId: string, field: keyof ListingItem, value: any) => {
+    setListingItems(prev => 
+      prev.map(item => 
+        item.partId === partId 
+          ? { ...item, [field]: value }
+          : item
+      )
+    )
   }
 
-  const startBulkListing = async () => {
-    if (selectedParts.size === 0) {
-      alert('Please select at least one part to list')
+  const toggleItemSelection = (partId: string) => {
+    updateListingItem(partId, 'selected', !listingItems.find(item => item.partId === partId)?.selected)
+  }
+
+  const selectAllItems = () => {
+    const allSelected = listingItems.every(item => item.selected)
+    setListingItems(prev => 
+      prev.map(item => ({ ...item, selected: !allSelected }))
+    )
+  }
+
+  const createBulkListings = async () => {
+    const selectedItems = listingItems.filter(item => item.selected)
+    
+    if (selectedItems.length === 0) {
+      setError('Please select at least one item to list')
       return
     }
 
     setLoading(true)
-    setProgress(0)
-    setCurrentOperation('Starting bulk listing process...')
+    setError(null)
 
     try {
       const response = await fetch('/api/ebay/listings/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          partIds: Array.from(selectedParts),
-          vehicleId: vehicleId,
-          listingTemplate: listingTemplate,
-          pricingStrategy: pricingStrategy,
-          maxConcurrent: maxConcurrent,
-          schedulingOptions: {
-            startImmediately: true
+          vehicleId,
+          parts: selectedItems.map(item => ({
+            partId: item.partId,
+            title: item.title,
+            description: item.description,
+            price: item.price,
+            condition: item.condition,
+            shipping: defaultShipping,
+            handlingTime: defaultHandlingTime,
+            returnPolicy: defaultReturnPolicy
+          })),
+          maxConcurrent,
+          listingTemplate: {
+            shipping: { cost: defaultShipping, handlingTime: defaultHandlingTime },
+            returns: { period: defaultReturnPolicy },
+            payment: { methods: ['PayPal', 'CreditCard'] }
           }
         })
       })
@@ -199,315 +316,398 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
       const data = await response.json()
 
       if (data.success) {
-        setCurrentOperation('Bulk listing completed successfully!')
-        setProgress(100)
-        
-        // Refresh data
-        await Promise.all([
-          fetchAvailableParts(),
-          fetchBulkOperations()
-        ])
-        
-        // Clear selection
-        setSelectedParts(new Set())
-        setShowListingDialog(false)
+        setSuccess(`Successfully created ${data.successful} eBay listings!`)
+        setBulkOperation(data.operation)
       } else {
-        throw new Error(data.message || 'Bulk listing failed')
+        setError(data.message || 'Failed to create bulk listings')
       }
-
-    } catch (error) {
-      console.error('Bulk listing error:', error)
-      setCurrentOperation('Bulk listing failed')
+    } catch (err) {
+      setError('Network error. Please try again.')
+      console.error('Bulk listing error:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'in_progress':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />
-    }
+  const selectedCount = listingItems.filter(item => item.selected).length
+  const totalValue = listingItems.reduce((sum, item) => sum + item.price, 0)
+  const selectedValue = listingItems
+    .filter(item => item.selected)
+    .reduce((sum, item) => sum + item.price, 0)
+
+  if (loading && !parts.length) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Loading parts and vehicle data...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800'
-      case 'failed':
-        return 'bg-red-100 text-red-800'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const totalSelectedValue = Array.from(selectedParts).reduce((sum, partId) => {
-    const part = availableParts.find(p => p.id === partId)
-    return sum + (part?.currentValue || 0)
-  }, 0)
-
-  const estimatedListingValue = totalSelectedValue * (1 - pricingStrategy.discountPercentage / 100)
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Header and Selection */}
+    <div className={className}>
+      {/* Header */}
       <Card>
         <CardHeader>
+          <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
+              <Upload className="h-5 w-5" />
             Bulk eBay Listing Management
           </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Selection Summary */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-                className="flex items-center gap-2"
-              >
-                {selectedParts.size === availableParts.length ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Package className="h-4 w-4" />
-                )}
-                {selectedParts.size === availableParts.length ? 'Deselect All' : 'Select All'}
-              </Button>
-              
-              <div className="text-sm">
-                <span className="font-medium">{selectedParts.size}</span> parts selected
-              </div>
-              
-              <div className="text-sm text-gray-600">
-                Total Value: <span className="font-medium">${totalSelectedValue.toLocaleString()}</span>
-              </div>
-              
-              <div className="text-sm text-green-600">
-                Est. Listing Value: <span className="font-medium">${estimatedListingValue.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <Dialog open={showListingDialog} onOpenChange={setShowListingDialog}>
+            <div className="flex gap-2">
+              <Dialog open={showSettings} onOpenChange={setShowSettings}>
               <DialogTrigger asChild>
-                <Button 
-                  disabled={selectedParts.size === 0 || loading}
-                  className="flex items-center gap-2"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Create Listings ({selectedParts.size})
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
                 </Button>
               </DialogTrigger>
-              
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Bulk eBay Listing Configuration</DialogTitle>
-                  <DialogDescription>
-                    Configure your bulk listing settings for {selectedParts.size} parts
-                  </DialogDescription>
+                    <DialogTitle>Listing Settings</DialogTitle>
                 </DialogHeader>
-
-                <div className="space-y-6">
-                  {/* Pricing Strategy */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Pricing Strategy</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium">Pricing Method</label>
-                        <Select 
-                          value={pricingStrategy.pricingMethod} 
-                          onValueChange={(value: any) => setPricingStrategy(prev => ({ ...prev, pricingMethod: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="market">Market Price</SelectItem>
-                            <SelectItem value="competitive">Competitive</SelectItem>
-                            <SelectItem value="fixed">Fixed Price</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div>
-                        <label className="text-sm font-medium">Discount %</label>
+                      <label className="text-sm font-medium">Default Shipping Cost ($)</label>
                         <Input
                           type="number"
-                          min="0"
-                          max="50"
-                          value={pricingStrategy.discountPercentage}
-                          onChange={(e) => setPricingStrategy(prev => ({ ...prev, discountPercentage: parseInt(e.target.value) || 0 }))}
-                        />
-                      </div>
+                        value={defaultShipping}
+                        onChange={(e) => setDefaultShipping(parseFloat(e.target.value) || 0)}
+                        step="0.01"
+                      />
                     </div>
-                  </div>
-
-                  {/* Listing Template */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Listing Template</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium">Return Policy (Days)</label>
-                        <Select 
-                          value={listingTemplate.returnPolicy} 
-                          onValueChange={(value) => setListingTemplate(prev => ({ ...prev, returnPolicy: value }))}
-                        >
+                      <label className="text-sm font-medium">Handling Time (days)</label>
+                      <Select value={defaultHandlingTime} onValueChange={setDefaultHandlingTime}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="14">14 Days</SelectItem>
-                            <SelectItem value="30">30 Days</SelectItem>
-                            <SelectItem value="60">60 Days</SelectItem>
+                          <SelectItem value="0">Same day</SelectItem>
+                          <SelectItem value="1">1 business day</SelectItem>
+                          <SelectItem value="2">2 business days</SelectItem>
+                          <SelectItem value="3">3 business days</SelectItem>
+                          <SelectItem value="5">5 business days</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      
-                      <div>
-                        <label className="text-sm font-medium">Shipping Policy</label>
-                        <Select 
-                          value={listingTemplate.shippingPolicy} 
-                          onValueChange={(value) => setListingTemplate(prev => ({ ...prev, shippingPolicy: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">Standard Shipping</SelectItem>
-                            <SelectItem value="expedited">Expedited</SelectItem>
-                            <SelectItem value="free">Free Shipping</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Processing Settings */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Processing Settings</h3>
-                    
                     <div>
-                      <label className="text-sm font-medium">Max Concurrent Listings</label>
-                      <Select 
-                        value={maxConcurrent.toString()} 
-                        onValueChange={(value) => setMaxConcurrent(parseInt(value))}
-                      >
+                      <label className="text-sm font-medium">Return Policy (days)</label>
+                      <Select value={defaultReturnPolicy} onValueChange={setDefaultReturnPolicy}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1">1 (Safest)</SelectItem>
-                          <SelectItem value="3">3 (Recommended)</SelectItem>
-                          <SelectItem value="5">5 (Fast)</SelectItem>
+                          <SelectItem value="0">No returns</SelectItem>
+                          <SelectItem value="14">14 days</SelectItem>
+                          <SelectItem value="30">30 days</SelectItem>
+                          <SelectItem value="60">60 days</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowListingDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={startBulkListing} disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating Listings...
-                      </>
-                    ) : (
-                      'Create Listings'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
-
-          {/* Progress */}
-          {loading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{currentOperation}</span>
-                <span>{Math.round(progress)}%</span>
+        </CardHeader>
+        <CardContent>
+          {/* Vehicle Info */}
+          {vehicle && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2">Vehicle Information</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-blue-700 font-medium">Vehicle:</span>
+                  <p className="text-blue-900">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+                </div>
+                {vehicle.engine && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Engine:</span>
+                    <p className="text-blue-900">{vehicle.engine}</p>
+                  </div>
+                )}
+                {vehicle.drivetrain && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Drivetrain:</span>
+                    <p className="text-blue-900">{vehicle.drivetrain}</p>
+                  </div>
+                )}
+                {vehicle.transmission && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Transmission:</span>
+                    <p className="text-blue-900">{vehicle.transmission}</p>
+                  </div>
+                )}
               </div>
-              <Progress value={progress} className="w-full" />
             </div>
           )}
 
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{parts.length}</div>
+              <div className="text-sm text-green-600">Total Parts</div>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{selectedCount}</div>
+              <div className="text-sm text-blue-600">Selected</div>
+            </div>
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">${totalValue.toLocaleString()}</div>
+              <div className="text-sm text-purple-600">Total Value</div>
+            </div>
+            <div className="p-3 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">${selectedValue.toLocaleString()}</div>
+              <div className="text-sm text-orange-600">Selected Value</div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button
+              variant="outline"
+              onClick={selectAllItems}
+              className="flex items-center gap-2"
+            >
+              {selectedCount === parts.length ? (
+                <XCircle className="h-4 w-4" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              {selectedCount === parts.length ? 'Deselect All' : 'Select All'}
+            </Button>
+            
+            <Button
+              onClick={() => generateAIDescriptions(false)}
+              disabled={aiGenerating}
+              className="flex items-center gap-2"
+            >
+              {aiGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bot className="h-4 w-4" />
+              )}
+              Generate All Descriptions
+            </Button>
+
+            <Button
+              onClick={() => generateAIDescriptions(true)}
+              disabled={aiGenerating || selectedCount === 0}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {aiGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bot className="h-4 w-4" />
+              )}
+              Generate Selected ({selectedCount})
+                  </Button>
+
+            <Button
+              onClick={createBulkListings}
+              disabled={loading || selectedCount === 0}
+              className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700"
+            >
+                    {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                <Upload className="h-4 w-4" />
+                    )}
+              Create {selectedCount} Listings
+                  </Button>
+          </div>
+
+          {/* Messages */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm mb-4">
+              <AlertCircle className="h-4 w-4 inline mr-2" />
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm mb-4">
+              <CheckCircle className="h-4 w-4 inline mr-2" />
+              {success}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
           {/* Parts Table */}
-          <div className="border rounded-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle>Parts Inventory ({parts.length} items)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">Select</TableHead>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedCount === parts.length && parts.length > 0}
+                      onChange={selectAllItems}
+                      className="rounded"
+                    />
+                  </TableHead>
                   <TableHead>Part Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Condition</TableHead>
-                  <TableHead>Current Value</TableHead>
-                  <TableHead>Est. Listing Price</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Images</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Description Preview</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {availableParts.map((part) => (
-                  <TableRow key={part.id}>
+                {listingItems.map((item) => (
+                  <TableRow key={item.partId}>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSelectPart(part.id)}
-                        className="p-1"
-                      >
-                        {selectedParts.has(part.id) ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Package className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {part.partsMaster.partName}
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => toggleItemSelection(item.partId)}
+                        className="rounded"
+                      />
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{part.partsMaster.category}</Badge>
+                      <div>
+                        <div className="font-medium">{item.partName}</div>
+                        <div className="text-sm text-gray-500">{item.category}</div>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{part.condition}</Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${part.currentValue?.toLocaleString() || '0'}
-                    </TableCell>
-                    <TableCell className="font-medium text-green-600">
-                      ${Math.round((part.currentValue || 0) * (1 - pricingStrategy.discountPercentage / 100)).toLocaleString()}
+                      <Badge variant="secondary">{item.category}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{part.status}</Badge>
+                      <Badge variant={item.condition === 'used' ? 'default' : 'secondary'}>
+                        {item.condition}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={item.price}
+                        onChange={(e) => updateListingItem(item.partId, 'price', parseFloat(e.target.value) || 0)}
+                        step="0.01"
+                        className="w-24"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <PartImageGallery
+                        partId={item.partId}
+                        partName={item.partName}
+                        images={(() => {
+                          const part = parts.find(p => p.id === item.partId)
+                          if (part) {
+                            // Combine custom images and parts master images
+                            const customImages = Array.isArray(part.customImages) ? part.customImages : []
+                            const masterImages = Array.isArray(part.partsMaster.images) ? part.partsMaster.images : []
+                            return [...customImages, ...masterImages]
+                          }
+                          return []
+                        })()}
+                        onImagesUpdate={(images) => {
+                          // Update the part's images in the parts array
+                          setParts(prev => prev.map(p => 
+                            p.id === item.partId 
+                              ? { ...p, partsMaster: { ...p.partsMaster, images: images } }
+                              : p
+                          ))
+                        }}
+                        trigger={
+                          <Button size="sm" variant="outline">
+                            <ImageIcon className="h-3 w-3 mr-1" />
+                            Images
+                          </Button>
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {item.editing ? (
+                        <Input
+                          value={item.title}
+                          onChange={(e) => updateListingItem(item.partId, 'title', e.target.value)}
+                          placeholder="Listing title..."
+                          className="min-w-[200px]"
+                        />
+                      ) : (
+                        <div className="max-w-[200px] truncate" title={item.title}>
+                          {item.title || 'Click edit to set title'}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-[300px] truncate text-sm text-gray-600" title={item.description}>
+                        {item.description || 'No description generated'}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateListingItem(item.partId, 'editing', !item.editing)}
+                        >
+                          {item.editing ? (
+                            <Save className="h-3 w-3" />
+                          ) : (
+                            <Edit className="h-3 w-3" />
+                          )}
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Settings className="h-4 w-4" />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => generateAIDescriptions(false)}
+                          disabled={aiGenerating}
+                        >
+                          {aiGenerating ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Bot className="h-3 w-3" />
+                          )}
                         </Button>
+                        {vehicle && (
+                          <EbayListingTemplate
+                            partId={item.partId}
+                            partName={item.partName}
+                            category={item.category}
+                            condition={item.condition}
+                            vehicleInfo={{
+                              year: vehicle.year,
+                              make: vehicle.make,
+                              model: vehicle.model,
+                              engine: vehicle.engine,
+                              drivetrain: vehicle.driveType,
+                              transmission: vehicle.transmission
+                            }}
+                            currentPrice={item.price}
+                            onSave={(template) => {
+                              updateListingItem(item.partId, 'title', template.title)
+                              updateListingItem(item.partId, 'description', template.description)
+                              updateListingItem(item.partId, 'price', template.price)
+                              updateListingItem(item.partId, 'keywords', template.keywords.join(', '))
+                            }}
+                            onPreview={(template) => {
+                              console.log('Preview template:', template)
+                              // You can implement a preview modal here
+                            }}
+                            trigger={
+                              <Button size="sm" variant="outline">
+                                <FileText className="h-3 w-3" />
+                              </Button>
+                            }
+                          />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -515,79 +715,8 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
               </TableBody>
             </Table>
           </div>
-
-          {availableParts.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No parts available for listing. Please ensure parts have values and are marked as available.
-            </div>
-          )}
         </CardContent>
       </Card>
-
-      {/* Bulk Operations History */}
-      {bulkOperations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Recent Bulk Operations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Operation</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Results</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bulkOperations.map((operation) => (
-                    <TableRow key={operation.id}>
-                      <TableCell className="font-medium">
-                        {operation.operationName}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(operation.status)}
-                          <Badge className={getStatusColor(operation.status)}>
-                            {operation.status}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={operation.progress} className="w-20" />
-                          <span className="text-sm">{Math.round(operation.progress)}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="text-green-600">✓ {operation.successfulListings} successful</div>
-                          <div className="text-red-600">✗ {operation.failedListings} failed</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(operation.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

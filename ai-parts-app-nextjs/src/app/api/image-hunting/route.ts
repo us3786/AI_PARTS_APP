@@ -190,7 +190,14 @@ async function huntGoogleImages(partName: string, vehicleQuery: string, maxImage
     
     const mockImages = [
       {
-        url: `https://via.placeholder.com/400x300/cccccc/666666?text=${encodeURIComponent(partName)}`,
+        url: `data:image/svg+xml;base64,${Buffer.from(`
+          <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f3f4f6"/>
+            <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#6b7280">
+              ${partName.replace(/[<>]/g, '')}
+            </text>
+          </svg>
+        `).toString('base64')}`,
         source: 'Google Images',
         title: `${vehicleQuery} ${partName} - Used Parts`,
         quality: 85,
@@ -199,7 +206,14 @@ async function huntGoogleImages(partName: string, vehicleQuery: string, maxImage
         price: 0
       },
       {
-        url: `https://via.placeholder.com/350x250/cccccc/666666?text=${encodeURIComponent(partName)}`,
+        url: `data:image/svg+xml;base64,${Buffer.from(`
+          <svg width="350" height="250" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#e5e7eb"/>
+            <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="12" fill="#374151">
+              ${partName.replace(/[<>]/g, '')} - Used Part
+            </text>
+          </svg>
+        `).toString('base64')}`,
         source: 'Google Images',
         title: `${partName} - Used Automotive Part`,
         quality: 80,
@@ -222,7 +236,17 @@ async function huntLKQImages(partName: string, vehicleQuery: string, maxImages: 
     // Simulate LKQ web scraping for images
     const mockImages = [
       {
-        url: `https://via.placeholder.com/300x300/ff6b6b/ffffff?text=LKQ+${encodeURIComponent(partName)}`,
+        url: `data:image/svg+xml;base64,${Buffer.from(`
+          <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#fee2e2"/>
+            <text x="50%" y="45%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="12" fill="#dc2626">
+              LKQ
+            </text>
+            <text x="50%" y="55%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="10" fill="#374151">
+              ${partName.replace(/[<>]/g, '')}
+            </text>
+          </svg>
+        `).toString('base64')}`,
         source: 'LKQ',
         title: `${vehicleQuery} ${partName} - LKQ Used Parts`,
         quality: 90,
@@ -245,7 +269,17 @@ async function huntCarPartsImages(partName: string, vehicleQuery: string, maxIma
     // Simulate Car-Parts.com web scraping for images
     const mockImages = [
       {
-        url: `https://via.placeholder.com/250x200/4ecdc4/ffffff?text=CarParts+${encodeURIComponent(partName)}`,
+        url: `data:image/svg+xml;base64,${Buffer.from(`
+          <svg width="250" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#d1fae5"/>
+            <text x="50%" y="45%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="10" fill="#059669">
+              Car-Parts.com
+            </text>
+            <text x="50%" y="55%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="8" fill="#374151">
+              ${partName.replace(/[<>]/g, '')}
+            </text>
+          </svg>
+        `).toString('base64')}`,
         source: 'Car-Parts.com',
         title: `${vehicleQuery} ${partName} - Car-Parts.com`,
         quality: 88,
@@ -373,8 +407,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const partId = searchParams.get('partId')
     const source = searchParams.get('source')
+    const skipHunting = searchParams.get('skipHunting') === 'true'
 
-    console.log('Image hunting GET request for partId:', partId, 'source:', source)
+    console.log('Image hunting GET request for partId:', partId, 'source:', source, 'skipHunting:', skipHunting)
 
     if (!partId) {
       return NextResponse.json(
@@ -383,11 +418,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Debug: Check if there are any parts in the database
-    const totalPartsMaster = await prisma.partsMaster.count()
-    const totalPartsInventory = await prisma.partsInventory.count()
-    console.log(`Database stats: ${totalPartsMaster} partsMaster, ${totalPartsInventory} partsInventory`)
-
     // Get part images from database - handle both partsMaster and partsInventory IDs
     let partsMaster = null
     let partsInventory = null
@@ -395,10 +425,8 @@ export async function GET(request: NextRequest) {
     // First, try to find directly in partsMaster
     partsMaster = await prisma.partsMaster.findUnique({
       where: { id: partId },
-      select: { images: true, partName: true }
+      select: { images: true, partName: true, id: true }
     })
-    
-    console.log('Direct partsMaster lookup:', partsMaster ? 'Found' : 'Not found')
 
     // If not found, try to find via partsInventory (most common case)
     if (!partsMaster) {
@@ -406,22 +434,18 @@ export async function GET(request: NextRequest) {
         where: { id: partId },
         include: {
           partsMaster: {
-            select: { images: true, partName: true }
+            select: { images: true, partName: true, id: true }
           }
         }
       })
       
       if (partsInventory?.partsMaster) {
         partsMaster = partsInventory.partsMaster
-        console.log('Found via partsInventory:', partsMaster.partName, 'Inventory ID:', partsInventory.id)
       }
     }
 
-    console.log('Final partsMaster result:', partsMaster ? `Found: ${partsMaster.partName}` : 'Not found')
-
     if (!partsMaster) {
       // If part doesn't exist yet, return sample images for demonstration
-      console.log('Part not found in database, providing sample images for partId:', partId)
       const sampleImages = [
         {
           url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=Sample+Part+Image`,
@@ -454,28 +478,42 @@ export async function GET(request: NextRequest) {
     }
 
     let images = Array.isArray(partsMaster.images) ? partsMaster.images : []
-    console.log('Images array length:', images.length)
 
-    // If no images found, provide sample images for demonstration
+    // If no images found and not skipping hunting, try to hunt for real images
+    if (images.length === 0 && !skipHunting) {
+      try {
+        // Only try eBay for now to reduce resource usage
+        const vehicleQuery = `${new Date().getFullYear() - 5} car` // Generic vehicle query
+        const huntedImages = await huntEbayImages(partsMaster.partName, vehicleQuery, 2) // Reduced to 2 images
+        
+        if (huntedImages.length > 0) {
+          images = huntedImages
+          
+          // Save the found images to the database
+          try {
+            await prisma.partsMaster.update({
+              where: { id: partsMaster.id },
+              data: { images: images }
+            })
+          } catch (dbError) {
+            console.error('Error saving images to database:', dbError)
+          }
+        }
+      } catch (huntError) {
+        console.error('Error hunting for images:', huntError)
+      }
+    }
+
+    // If still no images, provide sample images
     if (images.length === 0) {
-      console.log('No images found, providing sample images for:', partsMaster.partName)
       images = [
         {
-          url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=${encodeURIComponent(partsMaster.partName)}`,
+          url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=${encodeURIComponent(partsMaster.partName.substring(0, 20))}`,
           source: 'Sample Image',
           title: `${partsMaster.partName} - Sample Image`,
           quality: 85,
           dimensions: { width: 400, height: 300 },
           listingUrl: `https://www.google.com/search?q=${encodeURIComponent(partsMaster.partName + ' used parts')}`,
-          addedDate: new Date().toISOString()
-        },
-        {
-          url: `https://via.placeholder.com/350x250/059669/ffffff?text=${encodeURIComponent(partsMaster.partName)}`,
-          source: 'Sample Image',
-          title: `${partsMaster.partName} - Alternative View`,
-          quality: 80,
-          dimensions: { width: 350, height: 250 },
-          listingUrl: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(partsMaster.partName + ' used')}`,
           addedDate: new Date().toISOString()
         }
       ]

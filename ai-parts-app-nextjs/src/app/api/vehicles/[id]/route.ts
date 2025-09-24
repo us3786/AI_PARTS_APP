@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const vehicleId = params.id
+    const { id: vehicleId } = await params
 
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -46,10 +46,10 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const vehicleId = params.id
+    const { id: vehicleId } = await params
 
     // Delete all related data
     await prisma.partsInventory.deleteMany({

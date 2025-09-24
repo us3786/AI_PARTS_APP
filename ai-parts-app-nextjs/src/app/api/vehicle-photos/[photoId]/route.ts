@@ -5,10 +5,10 @@ import { join } from 'path'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const photoId = params.photoId
+    const { photoId } = await params
 
     // Get photo details
     const photo = await prisma.vehiclePhoto.findUnique({

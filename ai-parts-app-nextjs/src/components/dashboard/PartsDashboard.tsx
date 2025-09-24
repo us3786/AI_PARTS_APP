@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PartsFilter } from '@/components/forms/PartsFilter'
 import { PartsDashboardProps, Part, Report } from '@/types'
-import { Loader2, Search, Filter, ExternalLink, DollarSign, Download, RefreshCw, TrendingUp } from 'lucide-react'
+import { Loader2, Search, Filter, ExternalLink, DollarSign, Download, RefreshCw, TrendingUp, Upload, Image } from 'lucide-react'
+import { SellOnEbay } from '@/components/forms/SellOnEbay'
+import { PartImageGallery } from '@/components/forms/PartImageGallery'
 
 // Helper function to determine priority from category
 function getPriorityFromCategory(category: string): 'high' | 'medium' | 'low' {
@@ -25,6 +27,7 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
   const [priceLoading, setPriceLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState<Set<string>>(new Set())
 
   const fetchParts = async () => {
     setLoading(true)
@@ -44,7 +47,20 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
           category: item.partsMaster.category,
           priority: getPriorityFromCategory(item.partsMaster.category),
           price: item.currentValue || item.partsMaster.estimatedValue || 0,
-          imageUrl: item.customImages?.[0] || item.partsMaster.images?.[0],
+          imageUrl: (() => {
+            // Handle custom images first (inventory-specific images)
+            if (item.customImages && Array.isArray(item.customImages) && item.customImages.length > 0) {
+              const firstImage = item.customImages[0]
+              return typeof firstImage === 'string' ? firstImage : firstImage?.url
+            }
+            // Handle parts master images (default images for this part type)
+            if (item.partsMaster.images && Array.isArray(item.partsMaster.images) && item.partsMaster.images.length > 0) {
+              const firstImage = item.partsMaster.images[0]
+              return typeof firstImage === 'string' ? firstImage : firstImage?.url
+            }
+            // No images found - return null to show upload button
+            return null
+          })(),
           ebayListingId: null,
           ebayUrl: null,
           vehicleId: item.vehicleId,
@@ -151,6 +167,73 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
       console.error('Export error:', err)
     } finally {
       setExportLoading(false)
+    }
+  }
+
+  const huntForImages = async (partId: string) => {
+    setImageLoading(prev => new Set(prev).add(partId))
+    
+    try {
+      const response = await fetch(`/api/image-hunting?partId=${partId}&skipHunting=false`)
+      const data = await response.json()
+      
+      if (data.success && data.images && data.images.length > 0) {
+        // Update the part with the new images
+        setParts(prev => prev.map(part => 
+          part.id === partId 
+            ? { ...part, imageUrl: data.images[0].url }
+            : part
+        ))
+        setFilteredParts(prev => prev.map(part => 
+          part.id === partId 
+            ? { ...part, imageUrl: data.images[0].url }
+            : part
+        ))
+      }
+    } catch (err) {
+      console.error('Error hunting for images:', err)
+    } finally {
+      setImageLoading(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(partId)
+        return newSet
+      })
+    }
+  }
+
+  const batchHuntForImages = async () => {
+    if (parts.length === 0) return
+    
+    setImageLoading(new Set(parts.filter(p => !p.imageUrl).map(p => p.id)))
+    
+    try {
+      // Get parts that need images
+      const partsNeedingImages = parts.filter(p => !p.imageUrl).map(p => p.id)
+      
+      if (partsNeedingImages.length === 0) {
+        setImageLoading(new Set())
+        return
+      }
+
+      const response = await fetch('/api/image-hunting/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          partIds: partsNeedingImages,
+          skipExisting: true 
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        // Refresh parts data to get updated images
+        await fetchParts()
+      }
+    } catch (err) {
+      console.error('Error batch hunting for images:', err)
+    } finally {
+      setImageLoading(new Set())
     }
   }
 
@@ -279,6 +362,19 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
             </CardTitle>
             <div className="flex gap-2">
               <Button 
+                onClick={batchHuntForImages} 
+                variant="outline" 
+                size="sm"
+                disabled={imageLoading.size > 0 || parts.length === 0}
+              >
+                {imageLoading.size > 0 ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Image className="h-4 w-4 mr-2" />
+                )}
+                {imageLoading.size > 0 ? 'Finding Images...' : 'Find All Images'}
+              </Button>
+              <Button 
                 onClick={fetchRealPrices} 
                 variant="outline" 
                 size="sm"
@@ -370,6 +466,47 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-3">
+                      {/* Part Image */}
+                      <div className="aspect-square bg-gray-100 rounded-md overflow-hidden mb-3 relative">
+                        {part.imageUrl ? (
+                          <img
+                            src={part.imageUrl}
+                            alt={part.description}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to placeholder if image fails to load
+                              e.currentTarget.src = `https://via.placeholder.com/200x200/e5e7eb/6b7280?text=${encodeURIComponent(part.description.substring(0, 15))}`
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="text-center">
+                              <Image className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                              <p className="text-xs text-gray-500 mb-2">No image</p>
+                              <PartImageGallery
+                                partId={part.id}
+                                partName={part.description}
+                                images={[]}
+                                onImagesUpdate={(images) => {
+                                  // Update the part with new images
+                                  setParts(prev => prev.map(p => 
+                                    p.id === part.id 
+                                      ? { ...p, imageUrl: images[0]?.url || p.imageUrl }
+                                      : p
+                                  ))
+                                }}
+                                trigger={
+                                  <Button size="sm" variant="outline" className="text-xs">
+                                    <Upload className="h-3 w-3 mr-1" />
+                                    Upload
+                                  </Button>
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Category</span>
                         <span className="font-medium">{part.category}</span>
@@ -393,18 +530,45 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
                       )}
 
                       <div className="flex gap-2 pt-2">
+                        <SellOnEbay 
+                          partId={part.id}
+                          vehicleId={part.vehicleId}
+                          partName={part.description}
+                          partPrice={part.price}
+                          partCondition={part.condition}
+                          trigger={
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Upload className="h-3 w-3 mr-1" />
+                              Sell on eBay
+                            </Button>
+                          }
+                        />
+                        <PartImageGallery
+                          partId={part.id}
+                          partName={part.description}
+                          images={[]}
+                          onImagesUpdate={(images) => {
+                            setParts(prev => prev.map(p => 
+                              p.id === part.id 
+                                ? { ...p, imageUrl: images[0]?.url || p.imageUrl }
+                                : p
+                            ))
+                          }}
+                          trigger={
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Image className="h-3 w-3 mr-1" />
+                              Images
+                            </Button>
+                          }
+                        />
                         {part.ebayUrl && (
                           <Button size="sm" variant="outline" className="flex-1" asChild>
                             <a href={part.ebayUrl} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-3 w-3 mr-1" />
-                              View on eBay
+                              View Listing
                             </a>
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" className="flex-1">
-                          <Filter className="h-3 w-3 mr-1" />
-                          Details
-                        </Button>
                       </div>
                     </div>
                   </CardContent>

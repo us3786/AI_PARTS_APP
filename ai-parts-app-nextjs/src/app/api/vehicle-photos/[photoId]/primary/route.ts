@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
-    const photoId = params.photoId
+    const { photoId } = await params
 
     // Get photo details
     const photo = await prisma.vehiclePhoto.findUnique({

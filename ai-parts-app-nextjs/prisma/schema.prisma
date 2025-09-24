@@ -41,6 +41,7 @@ model Vehicle {
   parts             Part[]
   reports           Report[]
   partsInventory    PartsInventory[]
+  vehiclePhotos     VehiclePhoto[]
   
   @@map("vehicles")
 }
@@ -250,6 +251,45 @@ model Settings {
   updatedAt       DateTime @updatedAt
   
   @@map("settings")
+}
+
+model VehiclePhoto {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  filename        String
+  originalName    String
+  url             String
+  thumbnailUrl    String?
+  fileSize        Int?
+  mimeType        String?
+  width           Int?
+  height          Int?
+  isPrimary       Boolean  @default(false)
+  tags            Json?    // Store array of tags
+  description     String?
+  processedAt     DateTime?
+  uploadedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  
+  @@map("vehicle_photos")
+}
+
+model ImageProcessingQueue {
+  id              String   @id @default(cuid())
+  vehicleId       String?
+  partId          String?
+  imageType       String   // 'vehicle' or 'part'
+  status          String   @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  progress        Int      @default(0)
+  message         String?
+  priority        String   @default("normal") // 'low', 'normal', 'high'
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("image_processing_queue")
 }
 
 model EbayTokens {

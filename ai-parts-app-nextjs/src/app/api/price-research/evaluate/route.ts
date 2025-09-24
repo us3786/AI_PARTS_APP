@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         condition: result.condition || 'Used',
         seller: result.seller || result.source,
         url: result.url,
-        imageUrl: result.imageUrl || `https://via.placeholder.com/150?text=${partName.replace(/\s+/g, '+')}`,
+        imageUrl: result.imageUrl || `https://via.placeholder.com/150x150/cccccc/666666?text=${encodeURIComponent(partName)}`,
         listingDate: new Date().toISOString(),
         source: result.source
       }))
@@ -85,7 +85,7 @@ async function fetchReferenceListings(partName: string, category: string, vehicl
       condition: condition,
       seller: `Seller${i + 1}`,
       url: generateRealisticUrl(searchQuery, source, i),
-      imageUrl: `https://via.placeholder.com/150?text=${partName.replace(/\s+/g, '+')}`,
+      imageUrl: `https://via.placeholder.com/150x150/cccccc/666666?text=${encodeURIComponent(partName)}`,
       listingDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
       source: source
     })

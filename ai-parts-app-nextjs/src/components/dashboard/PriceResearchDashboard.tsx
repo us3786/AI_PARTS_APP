@@ -193,26 +193,8 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         setResearchResults(results)
         setSummary(summary)
 
-        // Automatically fetch images for all parts with existing research data (with rate limiting)
-        console.log(`🖼️ Auto-fetching images for ${results.length} parts (rate limited)...`)
-        
-        // Rate limit: fetch images in batches of 10 with 100ms delay between batches
-        const batchSize = 10
-        const delay = 100
-        
-        for (let i = 0; i < results.length; i += batchSize) {
-          const batch = results.slice(i, i + batchSize)
-          
-          setTimeout(() => {
-            batch.forEach((result: any) => {
-              if (result.success) {
-                fetchPartImages(result.partId)
-              }
-            })
-          }, (i / batchSize) * delay)
-        }
-        
-        console.log('✅ Loaded existing research data and started rate-limited image fetching')
+        console.log('✅ Loaded existing research data')
+        // Note: Removed automatic image fetching to prevent browser hanging
       }
     } catch (error) {
       console.error('Error loading existing research data:', error)
@@ -1059,10 +1041,6 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                         <div className="flex flex-wrap gap-1">
                           {(() => {
                             const listings = result.marketAnalysis.referenceListings || []
-                            console.log('🔗 Debug - Sample Links for', result.partName, ':', {
-                              listingsCount: listings.length,
-                              listings: listings.map(l => ({ source: l.source, url: l.url }))
-                            })
                             
                             if (listings.length === 0) {
                               return (
