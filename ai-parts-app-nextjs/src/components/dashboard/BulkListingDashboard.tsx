@@ -61,6 +61,7 @@ import { EbayListingTemplate } from '@/components/forms/EbayListingTemplate'
 interface BulkListingDashboardProps {
   vehicleId: string
   className?: string
+  refreshTrigger?: number // Add refresh trigger prop
 }
 
 interface Part {
@@ -104,7 +105,7 @@ interface VehicleInfo {
   vin: string
 }
 
-export function BulkListingDashboard({ vehicleId, className }: BulkListingDashboardProps) {
+export function BulkListingDashboard({ vehicleId, className, refreshTrigger }: BulkListingDashboardProps) {
   const [parts, setParts] = useState<Part[]>([])
   const [vehicle, setVehicle] = useState<VehicleInfo | null>(null)
   const [listingItems, setListingItems] = useState<ListingItem[]>([])
@@ -152,6 +153,14 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
         const availableParts = partsData.inventory.filter((part: Part) => 
           part.status === 'available' && part.currentValue > 0
         )
+        
+        // Debug: Log images for first few parts
+        console.log('🔍 Debug - Parts with images:', availableParts.slice(0, 3).map(part => ({
+          partName: part.partsMaster.partName,
+          images: part.partsMaster.images,
+          imageCount: part.partsMaster.images?.length || 0
+        })))
+        
         setParts(availableParts)
 
         // Initialize listing items with research-based titles
@@ -201,11 +210,25 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
     console.log('✅ Updated titles with vehicle data for', updatedItems.length, 'items')
   }, []) // Empty dependency array since this function doesn't depend on any props or state
 
+  // Add refresh function to expose to parent components
+  const refreshData = useCallback(() => {
+    console.log('🔄 Refreshing bulk listing data to get updated images...')
+    fetchVehicleAndParts()
+  }, [fetchVehicleAndParts])
+
   useEffect(() => {
     if (vehicleId && !vehicle) { // Only fetch if vehicleId exists and vehicle is not already loaded
       fetchVehicleAndParts()
     }
   }, [vehicleId, vehicle, fetchVehicleAndParts]) // Add fetchVehicleAndParts to dependencies
+
+  // Watch for refresh trigger from parent component
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      console.log('🔄 Refresh trigger received, refreshing bulk listing data...')
+      refreshData()
+    }
+  }, [refreshTrigger, refreshData])
 
   // Update titles when vehicle data becomes available (only once)
   useEffect(() => {
@@ -750,7 +773,34 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
                             // Combine custom images and parts master images
                             const customImages = Array.isArray(part.customImages) ? part.customImages : []
                             const masterImages = Array.isArray(part.partsMaster.images) ? part.partsMaster.images : []
-                            return [...customImages, ...masterImages]
+                            
+                            // Convert string URLs to objects with url property for PartImageGallery
+                            const convertedMasterImages = masterImages.map((img: any) => {
+                              if (typeof img === 'string') {
+                                return {
+                                  url: img,
+                                  title: `${item.partName} image`,
+                                  source: 'Database',
+                                  quality: 85,
+                                  dimensions: 'Unknown',
+                                  addedDate: new Date().toISOString(),
+                                  isCustom: false
+                                }
+                              }
+                              return img // Already an object
+                            })
+                            
+                            const allImages = [...customImages, ...convertedMasterImages]
+                            
+                            // Debug: Log what images we're passing to PartImageGallery
+                            if (allImages.length > 0) {
+                              console.log('🖼️ Bulk Listing - Passing images to PartImageGallery for', item.partName, ':', allImages.length, 'images')
+                              console.log('🖼️ First image:', allImages[0])
+                            } else {
+                              console.log('❌ Bulk Listing - No images found for', item.partName)
+                            }
+                            
+                            return allImages
                           }
                           return []
                         })()}

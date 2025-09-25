@@ -45,6 +45,7 @@ import { ImageManager } from '@/components/forms/ImageManager'
 interface PriceResearchDashboardProps {
   vehicleId: string
   className?: string
+  onPriceResearchComplete?: () => void // Add callback for when price research is completed
 }
 
 interface PriceResearchResult {
@@ -54,6 +55,7 @@ interface PriceResearchResult {
   sources: number
   category?: string
   cached?: boolean
+  recommendedPrice: number
   marketAnalysis: {
     averagePrice: number
     minPrice: number
@@ -74,7 +76,6 @@ interface PriceResearchResult {
       isWithinRange: boolean
     }
   }
-  recommendedPrice?: number
   error?: string
   imageHunting?: {
     success: boolean
@@ -108,7 +109,7 @@ interface ResearchSummary {
   totalValue: number
 }
 
-export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDashboardProps) {
+export function PriceResearchDashboard({ vehicleId, className, onPriceResearchComplete }: PriceResearchDashboardProps) {
   const [researchResults, setResearchResults] = useState<PriceResearchResult[]>([])
   const [summary, setSummary] = useState<ResearchSummary | null>(null)
   const [loading, setLoading] = useState(false)
@@ -151,6 +152,8 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
       fetchPriceHistory()
       // Only load existing data once when vehicleId changes
       loadExistingResearchData()
+      // Load existing part images from database
+      refreshPartImagesFromDatabase()
     }
   }, [vehicleId])
 
@@ -198,7 +201,7 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                 averagePrice: item.averagePrice || 0,
                 minPrice: item.minPrice || item.averagePrice || 0,
                 maxPrice: item.maxPrice || item.averagePrice || 0,
-                recommendedPrice: item.averagePrice || 0,
+                recommendedPrice: item.price || item.averagePrice || 0,
                 marketTrend: item.marketTrend || 'stable',
                 confidence: item.confidence || 75,
                 sourceCount: item.sources || 1,
@@ -206,7 +209,7 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                 anomalyDetected: false,
                 priceEvaluation: item.marketAnalysis || {}
               },
-              recommendedPrice: item.averagePrice || 0
+              recommendedPrice: item.price || item.averagePrice || 0
             })
           }
         })
@@ -269,54 +272,233 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
     }
   }
 
-  const loadAllImagesWithProgress = useCallback(async () => {
-    const partsNeedingImages = researchResults.filter(result => 
-      result.success && result.partId && !partImages[result.partId]
-    )
-    
-    if (partsNeedingImages.length === 0) {
-      console.log('✅ All parts already have images loaded')
-      return
-    }
+  const startImageHunting = async () => {
+    setLoading(true)
+    setProgress(0)
+    setImageHuntingCancelled(false)
+    setCurrentOperation('Starting price research with image collection...')
 
-    setImageLoadingProgress({ loaded: 0, total: partsNeedingImages.length, loading: true })
-    setImageLoadingDetails([])
+    try {
+      // Fetch parts and vehicle data
+      const [partsResponse, vehicleResponse] = await Promise.all([
+        fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`),
+        fetch(`/api/vehicles/${vehicleId}`)
+      ])
+      
+      const partsData = await partsResponse.json()
+      const vehicleData = await vehicleResponse.json()
 
-    console.log(`🖼️ Starting to load images for ${partsNeedingImages.length} parts...`)
+      if (!partsData.success) {
+        throw new Error('Failed to fetch parts')
+      }
 
-    for (let i = 0; i < partsNeedingImages.length; i++) {
-      const result = partsNeedingImages[i]
-      if (result.success && result.partId) {
-        try {
-          await loadExistingPartImages(result.partId)
-          setImageLoadingProgress(prev => ({ ...prev, loaded: i + 1 }))
-          setImageLoadingDetails(prev => [...prev, `✅ Loaded images for ${result.partName}`])
-          console.log(`📸 Progress: ${i + 1}/${partsNeedingImages.length} - ${result.partName}`)
-          
-          // Small delay to prevent overwhelming the server
-          await new Promise(resolve => setTimeout(resolve, 200))
-        } catch (error) {
-          console.error(`❌ Failed to load images for ${result.partName}:`, error)
-          setImageLoadingDetails(prev => [...prev, `❌ Failed to load images for ${result.partName}`])
+      if (!vehicleData.success) {
+        throw new Error('Failed to fetch vehicle data')
+      }
+
+      const allParts = partsData.inventory || []
+      const vehicle = vehicleData.vehicle
+      
+      console.log('🚗 Vehicle data:', vehicle)
+      console.log('📦 Parts data:', allParts.length, 'parts found')
+      
+      if (!vehicle || !vehicle.make || !vehicle.model || !vehicle.year) {
+        throw new Error('Invalid vehicle data: missing make, model, or year')
+      }
+      
+      const partsToHunt = selectedCategories.length > 0
+        ? allParts.filter((part: any) => selectedCategories.includes(part.partsMaster.category))
+        : allParts
+
+      if (partsToHunt.length === 0) {
+        setCurrentOperation('No parts found for price research')
+        setLoading(false)
+        return
+      }
+
+      setCurrentOperation(`Running price research with image collection for ${partsToHunt.length} parts...`)
+
+      // Process price research in batches (images are automatically collected)
+      const batchSize = 5
+      const batches = []
+      for (let i = 0; i < partsToHunt.length; i += batchSize) {
+        batches.push(partsToHunt.slice(i, i + batchSize))
+      }
+
+      let processedBatches = 0
+      let processedParts = 0
+      const imageResults = []
+
+      for (const batch of batches) {
+        // Check if cancelled before processing each batch
+        if (imageHuntingCancelled) {
+          setCurrentOperation('Price research cancelled by user')
+          break
+        }
+
+        const batchPromises = batch.map(async (part: any) => {
+          try {
+            const requestData = {
+              partId: part.partsMasterId,
+              partName: part.partsMaster.partName,
+              make: vehicle.make,
+              model: vehicle.model,
+              year: vehicle.year,
+              category: part.partsMaster.category,
+              subCategory: part.partsMaster.subCategory,
+              vehicleId: vehicleId
+            }
+            
+            console.log('📤 Sending price research request for:', part.partsMaster.partName, requestData)
+            
+            const imageResponse = await fetch('/api/background/price-research', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestData)
+            })
+
+            if (!imageResponse.ok) {
+              const errorText = await imageResponse.text()
+              console.error('❌ Price research API error:', imageResponse.status, errorText)
+              throw new Error(`Price research failed: ${imageResponse.status} ${errorText}`)
+            }
+
+            const researchData = await imageResponse.json()
+            
+            // Update progress for individual part completion
+            processedParts++
+            const partProgress = (processedParts / partsToHunt.length) * 100
+            setProgress(partProgress)
+            setCurrentOperation(`Processing ${part.partsMaster.partName}... (${processedParts}/${partsToHunt.length})`)
+            
+            return {
+              partName: part.partsMaster.partName,
+              success: researchData.success,
+              imagesFound: researchData.imagesFound || 0,
+              imagesSaved: researchData.imagesFound || 0, // Price research saves images automatically
+              sources: researchData.sources || 0,
+              recommendedPrice: researchData.recommendedPrice || 0
+            }
+          } catch (error) {
+            // Update progress even for failed parts
+            processedParts++
+            const partProgress = (processedParts / partsToHunt.length) * 100
+            setProgress(partProgress)
+            setCurrentOperation(`Failed ${part.partsMaster.partName}... (${processedParts}/${partsToHunt.length})`)
+            
+            return {
+              partName: part.partsMaster.partName,
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        imageResults.push(...batchResults)
+
+        processedBatches++
+        // Progress is already updated per part, but show batch completion
+        setCurrentOperation(`Completed batch ${processedBatches}/${batches.length} (${processedParts}/${partsToHunt.length} parts processed)`)
+
+        // Delay between batches
+        if (processedBatches < batches.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
         }
       }
-    }
 
-    setImageLoadingProgress(prev => ({ ...prev, loading: false }))
-    console.log(`🎉 Completed loading images for ${partsNeedingImages.length} parts!`)
-  }, [researchResults, partImages])
+      setCurrentOperation(`Price research completed! Found images for ${imageResults.filter(r => r.success).length} parts`)
+      setProgress(100)
+
+      // Refresh part images from database after price research
+      console.log('🔄 Refreshing part images from database...')
+      await refreshPartImagesFromDatabase()
+
+    } catch (error) {
+      console.error('Price research error:', error)
+      setCurrentOperation('Price research failed')
+    } finally {
+      setLoading(false)
+      // Trigger callback to refresh bulk listing data
+      if (onPriceResearchComplete) {
+        console.log('🔄 Triggering bulk listing refresh after price research completion')
+        onPriceResearchComplete()
+      }
+    }
+  }
+
+  const loadAllImagesWithProgress = useCallback(async () => {
+    // Instead of loading existing images, trigger price research to collect new images
+    console.log('🖼️ Starting price research with image collection...')
+    
+    // Use the existing startImageHunting function which now does price research
+    await startImageHunting()
+    
+    console.log('✅ Image collection via price research completed')
+  }, [])
 
   // Auto-start image loading when research results are available
-  useEffect(() => {
-    if (researchResults.length > 0 && !imageLoadingProgress.loading && !imageLoadingStarted.current) {
-      console.log('🚀 Auto-starting image loading for', researchResults.length, 'parts...')
-      imageLoadingStarted.current = true
-      // Start loading images automatically but with a small delay
-      setTimeout(() => {
-        loadAllImagesWithProgress()
-      }, 1000)
+  // DISABLED: Auto-image loading to prevent circular loops and unnecessary processing
+  // Images will now be collected during price research with Google Images API
+  // useEffect(() => {
+  //   if (researchResults.length > 0 && !imageLoadingProgress.loading && !imageLoadingStarted.current) {
+  //     console.log('🚀 Auto-starting image loading for', researchResults.length, 'parts...')
+  //     imageLoadingStarted.current = true
+  //     // Start loading images automatically but with a small delay
+  //     setTimeout(() => {
+  //       loadAllImagesWithProgress()
+  //     }, 1000)
+  //   }
+  // }, [researchResults.length, imageLoadingProgress.loading, loadAllImagesWithProgress]) // Only trigger when research results change
+
+  const refreshPartImagesFromDatabase = async () => {
+    try {
+      console.log('🔄 Refreshing all part images from database...')
+      
+      // Get all parts with their images
+      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+      const data = await response.json()
+      
+      if (data.success && data.inventory) {
+        const newPartImages: Record<string, any[]> = {}
+        
+        data.inventory.forEach((part: any) => {
+          if (part.partsMaster && part.partsMaster.images && Array.isArray(part.partsMaster.images)) {
+            // Filter out placeholder images
+            const realImages = part.partsMaster.images.filter((img: any) => {
+              if (typeof img === 'string') {
+                return !img.includes('picsum.photos') && 
+                       !img.includes('placeholder') &&
+                       !img.includes('via.placeholder')
+              }
+              return img && img.url && 
+                     !img.url.includes('picsum.photos') && 
+                     !img.url.includes('placeholder') &&
+                     !img.url.includes('via.placeholder')
+            })
+            
+            if (realImages.length > 0) {
+              newPartImages[part.partsMasterId] = realImages.slice(0, 6) // Limit to 6 images
+              console.log(`✅ Found ${realImages.length} real images for ${part.partsMaster.partName}`)
+            }
+          }
+        })
+        
+        setPartImages(newPartImages)
+        console.log(`🔄 Updated part images for ${Object.keys(newPartImages).length} parts`)
+        
+        // Debug: Log first few parts with images
+        const debugParts = Object.entries(newPartImages).slice(0, 3)
+        console.log('🔍 Debug - Price Research Dashboard images:', debugParts.map(([partId, images]) => ({
+          partId,
+          imageCount: images.length,
+          firstImage: typeof images[0] === 'string' ? images[0] : images[0]?.url
+        })))
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing part images:', error)
     }
-  }, [researchResults.length, imageLoadingProgress.loading, loadAllImagesWithProgress]) // Only trigger when research results change
+  }
 
   const loadExistingPartImages = async (partId: string) => {
     try {
@@ -490,7 +672,12 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         console.log('🔍 Debug - Result data for', result.partName, ':', {
           marketAnalysis: result.marketAnalysis,
           referenceListings: result.marketAnalysis?.referenceListings,
-          referenceListingsLength: result.marketAnalysis?.referenceListings?.length || 0
+          referenceListingsLength: result.marketAnalysis?.referenceListings?.length || 0,
+          price: result.price,
+          averagePrice: result.averagePrice,
+          recommendedPrice: result.recommendedPrice,
+          sources: result.sources,
+          confidence: result.confidence
         })
         
         return {
@@ -501,7 +688,8 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
           sources: result.marketAnalysis?.sourceCount || 0,
           category: result.marketAnalysis?.category,
           marketAnalysis: result.marketAnalysis,
-          researchDate: result.researchDate
+          researchDate: result.researchDate,
+          recommendedPrice: result.price || result.averagePrice || result.marketAnalysis?.averagePrice || 0
         }
       })
 
@@ -549,109 +737,6 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
     } catch (error) {
       console.error('Price research error:', error)
       setCurrentOperation('Price research failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const startImageHunting = async () => {
-    setLoading(true)
-    setProgress(0)
-    setImageHuntingCancelled(false)
-    setCurrentOperation('Starting image hunting...')
-
-    try {
-      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error('Failed to fetch parts')
-      }
-
-      const allParts = data.inventory || []
-      const partsToHunt = selectedCategories.length > 0
-        ? allParts.filter((part: any) => selectedCategories.includes(part.partsMaster.category))
-        : allParts
-
-      if (partsToHunt.length === 0) {
-        setCurrentOperation('No parts found for image hunting')
-        setLoading(false)
-        return
-      }
-
-      setCurrentOperation(`Hunting images for ${partsToHunt.length} parts...`)
-
-      // Process image hunting in batches
-      const batchSize = 5
-      const batches = []
-      for (let i = 0; i < partsToHunt.length; i += batchSize) {
-        batches.push(partsToHunt.slice(i, i + batchSize))
-      }
-
-      let processedBatches = 0
-      const imageResults = []
-
-      for (const batch of batches) {
-        // Check if cancelled before processing each batch
-        if (imageHuntingCancelled) {
-          setCurrentOperation('Image hunting cancelled by user')
-          break
-        }
-
-        const batchPromises = batch.map(async (part: any) => {
-          try {
-            const imageResponse = await fetch('/api/image-hunting', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                partId: part.partsMasterId,
-                partName: part.partsMaster.partName,
-                make: data.vehicle?.make,
-                model: data.vehicle?.model,
-                year: data.vehicle?.year,
-                category: part.partsMaster.category,
-                subCategory: part.partsMaster.subCategory,
-                maxImages: 5,
-                vehicleId: vehicleId // Add vehicleId to the request
-              })
-            })
-
-            const imageData = await imageResponse.json()
-            return {
-              partName: part.partsMaster.partName,
-              success: imageData.success,
-              imagesFound: imageData.totalFound || 0,
-              imagesSaved: imageData.totalSaved || 0,
-              sources: imageData.sources || []
-            }
-          } catch (error) {
-            return {
-              partName: part.partsMaster.partName,
-              success: false,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }
-          }
-        })
-
-        const batchResults = await Promise.all(batchPromises)
-        imageResults.push(...batchResults)
-
-        processedBatches++
-        setProgress((processedBatches / batches.length) * 100)
-        setCurrentOperation(`Processed ${processedBatches}/${batches.length} batches...`)
-
-        // Delay between batches
-        if (processedBatches < batches.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-      }
-
-      setCurrentOperation(`Image hunting completed! Found images for ${imageResults.filter(r => r.success).length} parts`)
-      setProgress(100)
-
-    } catch (error) {
-      console.error('Image hunting error:', error)
-      setCurrentOperation('Image hunting failed')
     } finally {
       setLoading(false)
     }
@@ -1198,11 +1283,21 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                             
                             // Debug logging
                             if (partImagesList.length > 0) {
-                              console.log('🖼️ Found', partImagesList.length, 'real images for', result.partName)
+                              console.log('🖼️ Found', partImagesList.length, 'real images for', result.partName, ':', partImagesList[0])
+                            } else {
+                              console.log('❌ No images found for', result.partName, 'in partImages state')
                             }
                             
                             // Use real image if available, otherwise clean reference image, otherwise placeholder
-                            const imageUrl = realImage?.url || cleanReferenceImage
+                            // realImage is a string URL, not an object with url property
+                            const imageUrl = realImage || cleanReferenceImage
+                            
+                            // Debug: Log what imageUrl we're using
+                            if (imageUrl) {
+                              console.log('🖼️ Using image URL for', result.partName, ':', imageUrl)
+                            } else {
+                              console.log('❌ No image URL found for', result.partName, '- will show placeholder')
+                            }
                             
                             if (imageUrl && !imageUrl.includes('via.placeholder.com') && !imageUrl.includes('placeholder.com')) {
                               return (

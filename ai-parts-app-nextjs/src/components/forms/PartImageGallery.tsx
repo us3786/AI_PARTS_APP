@@ -85,20 +85,50 @@ export function PartImageGallery({
         )
         
         if (partData?.partsMaster?.images && Array.isArray(partData.partsMaster.images)) {
-          // Filter out placeholder images
-          const realImages = partData.partsMaster.images.filter((img: any) => 
-            typeof img === 'object' && 
-            img.url && 
-            !img.url.includes('via.placeholder.com') && 
-            !img.url.includes('placeholder.com')
-          )
+          // Filter out placeholder images (handle both string URLs and objects)
+          const realImages = partData.partsMaster.images.filter((img: any) => {
+            if (typeof img === 'string') {
+              // String URL - check if it's not a placeholder
+              return !img.includes('via.placeholder.com') && 
+                     !img.includes('placeholder.com') &&
+                     !img.includes('picsum.photos')
+            } else if (typeof img === 'object' && img.url) {
+              // Object with url property - check if it's not a placeholder
+              return !img.url.includes('via.placeholder.com') && 
+                     !img.url.includes('placeholder.com') &&
+                     !img.url.includes('picsum.photos')
+            }
+            return false
+          })
           
           if (realImages.length > 0) {
             // Limit to first 6 images for eBay (max 12 total - 6 part images + 6 car pictures)
             const limitedImages = realImages.slice(0, 6)
-            setImages(limitedImages)
-            onImagesUpdate(limitedImages)
-            console.log('✅ Loaded', limitedImages.length, 'real images for', partName, '(limited to 6 for eBay from', realImages.length, 'total)')
+            
+            // Convert string URLs to objects with url property for consistent handling
+            const convertedImages = limitedImages.map((img: any) => {
+              if (typeof img === 'string') {
+                return {
+                  url: img,
+                  title: `${partName} image`,
+                  source: 'Database',
+                  quality: 85,
+                  dimensions: 'Unknown',
+                  addedDate: new Date().toISOString(),
+                  isCustom: false
+                }
+              }
+              return img // Already an object
+            })
+            
+            setImages(convertedImages)
+            onImagesUpdate(convertedImages)
+            console.log('✅ Loaded', convertedImages.length, 'real images for', partName, '(limited to 6 for eBay from', realImages.length, 'total)')
+            
+            // Debug: Log the actual image URLs being set
+            convertedImages.forEach((img, idx) => {
+              console.log(`🖼️ Image ${idx + 1} for ${partName}:`, img.url)
+            })
           } else {
             console.log('⚠️ No real images found for', partName)
           }
@@ -335,10 +365,14 @@ export function PartImageGallery({
                             alt={image.title || `Image ${index + 1}`}
                             className="w-full h-full object-cover rounded-md"
                             onError={() => {
-                              // Error handling is built into LazyImage
+                              console.error('❌ Failed to load image:', image.url)
+                            }}
+                            onLoad={() => {
+                              console.log('✅ Successfully loaded image:', image.url)
                             }}
                             width={200}
                             height={200}
+                            priority={index < 3} // Load first 3 images immediately
                           />
                           
                           {/* Overlay Actions */}

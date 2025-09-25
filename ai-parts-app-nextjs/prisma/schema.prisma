@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 // Enhanced Vehicle Model with comprehensive specifications
@@ -130,6 +130,7 @@ model PriceResearch {
   // Relations
   partsMaster       PartsMaster @relation(fields: [partsMasterId], references: [id])
   
+  @@unique([partsMasterId, make, model, year])
   @@map("price_research")
 }
 

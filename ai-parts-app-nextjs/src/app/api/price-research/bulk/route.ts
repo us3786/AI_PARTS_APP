@@ -77,8 +77,18 @@ export async function POST(request: NextRequest) {
               partName: part.partsMaster.partName,
               success: true,
               cached: true,
+              price: existingResearch.price,
               marketAnalysis: existingResearch.marketAnalysis,
-              researchDate: existingResearch.researchDate
+              researchDate: existingResearch.researchDate,
+              sources: existingResearch.sources,
+              confidence: existingResearch.confidence,
+              marketTrend: existingResearch.marketTrend,
+              averagePrice: existingResearch.averagePrice,
+              minPrice: existingResearch.minPrice,
+              maxPrice: existingResearch.maxPrice,
+              medianPrice: existingResearch.medianPrice,
+              url: existingResearch.url,
+              images: existingResearch.images
             })
             continue
           } else {
@@ -114,7 +124,8 @@ export async function POST(request: NextRequest) {
             engineSize: vehicle.engine,
             driveType: vehicle.driveType,
             category: part.partsMaster.category,
-            subCategory: part.partsMaster.subCategory
+            subCategory: part.partsMaster.subCategory,
+            vehicleId: vehicleId
           })
         })
 

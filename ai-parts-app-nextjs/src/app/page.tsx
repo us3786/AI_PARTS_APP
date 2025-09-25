@@ -25,6 +25,7 @@ export default function Home() {
   const [setupComplete, setSetupComplete] = useState(false)
   const [setupError, setSetupError] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const [bulkListingRefreshTrigger, setBulkListingRefreshTrigger] = useState(0)
 
   const stopSetup = () => {
     if (abortController) {
@@ -75,25 +76,9 @@ export default function Home() {
         
         console.log(`✅ Parts populated: ${addedCount} new parts added`)
         
-        // Start background image hunting after parts population
-        console.log('🖼️ Starting background image hunting...')
-        try {
-          const imageHuntResponse = await fetch('/api/background/image-hunter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              vehicleId: decodedVehicle.id,
-              batchSize: 3 // Start with 3 parts to avoid overwhelming
-            })
-          })
-          
-          if (imageHuntResponse.ok) {
-            const imageHuntData = await imageHuntResponse.json()
-            console.log(`🎉 Background image hunting started: ${imageHuntData.processed} parts queued`)
-          }
-        } catch (imageHuntError) {
-          console.warn('⚠️ Background image hunting failed to start:', imageHuntError)
-        }
+        // Images are now automatically collected during price research
+        // No need for separate background image hunting
+        console.log('✅ Images will be collected automatically during price research')
       } else {
         console.warn('⚠️ Parts population failed:', populateData.message)
       }
@@ -235,10 +220,16 @@ export default function Home() {
               <ImageManagementDashboard vehicleId={vehicle.id} />
             </div>
             <div id="price-research" data-section="price-research">
-              <PriceResearchDashboard vehicleId={vehicle.id} />
+              <PriceResearchDashboard 
+                vehicleId={vehicle.id} 
+                onPriceResearchComplete={() => {
+                  console.log('🔄 Price research completed, refreshing bulk listing...')
+                  setBulkListingRefreshTrigger(prev => prev + 1)
+                }}
+              />
             </div>
             <div id="bulk-listing" data-section="bulk-listing">
-              <BulkListingDashboard vehicleId={vehicle.id} />
+              <BulkListingDashboard vehicleId={vehicle.id} refreshTrigger={bulkListingRefreshTrigger} />
             </div>
             <div id="ebay-preview" data-section="ebay-preview">
               <EbayListingPreview vehicleId={vehicle.id} />

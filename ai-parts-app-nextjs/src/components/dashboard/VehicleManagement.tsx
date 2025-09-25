@@ -164,36 +164,12 @@ export function VehicleManagement({ onVehicleSelect, className }: VehicleManagem
         const priceData = await priceResponse.json()
         
         if (priceData.success) {
-          // Start image hunting for all parts
-          try {
-            const imagePromises = partsData.inventory?.map(async (part: any) => {
-              const imageResponse = await fetch('/api/image-hunting', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  partId: part.partsMasterId,
-                  partName: part.partsMaster.partName,
-                  make: vehicle.make,
-                  model: vehicle.model,
-                  year: vehicle.year,
-                  category: part.partsMaster.category,
-                  subCategory: part.partsMaster.subCategory,
-                  maxImages: 5
-                })
-              })
-              return imageResponse.json()
-            }) || []
-
-            // Wait for all image hunting to complete
-            await Promise.all(imagePromises)
-          } catch (imageError) {
-            console.error('Image hunting error:', imageError)
-            // Don't fail the whole process if image hunting fails
-          }
-
+          // Images are now automatically collected during price research
+          // No need for separate image hunting - the price research API now extracts images from eBay listings
+          
           // Select the vehicle after successful population
           onVehicleSelect?.(vehicle)
-          alert(`Successfully populated ${partsData.totalParts} parts, started price research, and hunted for images!`)
+          alert(`Successfully populated ${partsData.totalParts} parts and completed price research with image collection!`)
         } else {
           alert(`Parts populated but price research failed: ${priceData.message}`)
         }

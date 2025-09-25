@@ -87,44 +87,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // SECOND: If no real images, trigger background hunting and return placeholder
-    console.log(`🔄 No real images found, triggering background image hunting for ${partName}`)
+    // SECOND: If no real images, return empty array to prevent circular loop
+    console.log(`❌ No real images found for ${partName} - returning empty array to prevent loop`)
     
-    // Trigger background image hunting (non-blocking)
-    fetch(`${process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'}/api/background/image-hunter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        vehicleId: vehicleId || 'unknown',
-        partIds: [partId],
-        batchSize: 1
-      })
-    }).catch(err => {
-      console.error('❌ Background image hunting trigger failed:', err)
-      // Don't throw - this is non-blocking
-    })
-
-    // Return placeholder images for now
-    const placeholderImages = [
-      {
-        url: `/api/placeholder?text=${encodeURIComponent(partName)}&w=400&h=300`,
-        title: `${partName} - Image hunting in progress`,
-        source: 'placeholder',
-        quality: 50,
-        width: 400,
-        height: 300,
-        fetchedAt: new Date().toISOString()
-      }
-    ]
-
     return NextResponse.json({
       success: true,
       partId: partId,
       partName: partName,
-      images: placeholderImages,
-      totalImages: placeholderImages.length,
-      sources: ['placeholder'],
-      note: 'Background image hunting in progress'
+      images: [],
+      totalImages: 0,
+      sources: [],
+      message: 'No real images found - returning empty array to prevent circular loop'
     })
 
   } catch (error) {

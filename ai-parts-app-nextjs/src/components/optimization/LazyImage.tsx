@@ -30,6 +30,7 @@ export function LazyImage({
   const [isInView, setIsInView] = useState(priority)
   const [hasError, setHasError] = useState(false)
   const [imageSrc, setImageSrc] = useState<string | null>(priority ? src : null)
+  const [loadTimeout, setLoadTimeout] = useState(false)
   const imgRef = useRef<HTMLDivElement>(null)
 
   // Intersection Observer for lazy loading
@@ -62,6 +63,19 @@ export function LazyImage({
       }
     }
   }, [src, priority, isInView])
+
+  // Timeout effect to prevent infinite loading
+  useEffect(() => {
+    if (!imageSrc || isLoaded || hasError) return
+
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ Image load timeout for:', src)
+      setLoadTimeout(true)
+      setHasError(true)
+    }, 10000) // 10 second timeout
+
+    return () => clearTimeout(timeout)
+  }, [imageSrc, isLoaded, hasError, src])
 
   // Handle image load
   const handleLoad = () => {
@@ -110,8 +124,8 @@ export function LazyImage({
       {hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center text-gray-500">
-            <div className="text-sm">Failed to load</div>
-            <div className="text-xs">Image Error</div>
+            <div className="text-sm">{loadTimeout ? 'Load timeout' : 'Failed to load'}</div>
+            <div className="text-xs">{loadTimeout ? 'Image took too long' : 'Image Error'}</div>
           </div>
         </div>
       )}

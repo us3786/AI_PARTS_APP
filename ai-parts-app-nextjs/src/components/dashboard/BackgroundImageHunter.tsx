@@ -27,16 +27,17 @@ export function BackgroundImageHunter({ vehicleId, className }: BackgroundImageH
 
   const fetchStatus = async () => {
     try {
-      const response = await fetch(`/api/background/image-hunter?vehicleId=${vehicleId}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setStatus(data)
-      } else {
-        setError(data.message)
-      }
+      // Since we now use price research for image collection, 
+      // we'll show a simple status instead of calling the old API
+      setStatus({
+        success: true,
+        message: 'Images are now collected automatically during price research',
+        processed: 0,
+        total: 0,
+        status: 'completed'
+      })
     } catch (err) {
-      setError('Failed to fetch image hunting status')
+      setError('Failed to fetch status')
       console.error('Status fetch error:', err)
     }
   }
@@ -46,24 +47,17 @@ export function BackgroundImageHunter({ vehicleId, className }: BackgroundImageH
     setError(null)
     
     try {
-      const response = await fetch('/api/background/image-hunter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicleId: vehicleId,
-          batchSize: 5
-        })
+      // Redirect to price research dashboard for image collection
+      setStatus({
+        success: true,
+        message: 'Please use the Price Research Dashboard to collect images automatically during price research',
+        processed: 0,
+        total: 0,
+        status: 'completed'
       })
       
-      const data = await response.json()
-      
-      if (data.success) {
-        console.log(`🎉 Background image hunting started: ${data.processed} parts processed`)
-        // Refresh status after hunting
-        setTimeout(() => fetchStatus(), 2000)
-      } else {
-        setError(data.message)
-      }
+      // Show a helpful message
+      alert('Images are now collected automatically during price research. Please go to the Price Research section and click "Load All Images" or "Force Refresh" to collect images.')
     } catch (err) {
       setError('Failed to start background image hunting')
       console.error('Hunting start error:', err)
@@ -75,9 +69,7 @@ export function BackgroundImageHunter({ vehicleId, className }: BackgroundImageH
   useEffect(() => {
     if (vehicleId) {
       fetchStatus()
-      // Refresh status every 30 seconds
-      const interval = setInterval(fetchStatus, 30000)
-      return () => clearInterval(interval)
+      // No need for polling since images are collected during price research
     }
   }, [vehicleId])
 
