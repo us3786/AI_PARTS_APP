@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
         condition: result.condition || 'Used',
         seller: result.seller || result.source,
         url: result.url,
-        imageUrl: result.imageUrl || `https://via.placeholder.com/150x150/cccccc/666666?text=${encodeURIComponent(partName)}`,
+        imageUrl: result.imageUrl || `data:image/svg+xml;base64,${Buffer.from(`
+          <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#cccccc"/>
+            <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="10" fill="#666666">
+              ${partName.replace(/[<>]/g, '')}
+            </text>
+          </svg>
+        `).toString('base64')}`,
         listingDate: new Date().toISOString(),
         source: result.source
       }))
@@ -34,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Apply price evaluation logic with anomaly detection
     const priceEvaluation = evaluatePriceWithAnomalyDetection(referenceListings, currentPrice)
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       priceEvaluation,
       referenceListings: referenceListings.map(listing => ({
@@ -42,10 +49,17 @@ export async function POST(request: NextRequest) {
         isOutlier: priceEvaluation.outliers.includes(listing.id)
       }))
     })
+    
+    // Add cache-busting headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
 
   } catch (error) {
     console.error('Price evaluation error:', error)
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         success: false, 
         message: 'Failed to evaluate price',
@@ -53,6 +67,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+    
+    // Add cache-busting headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
   }
 }
 
@@ -85,7 +106,14 @@ async function fetchReferenceListings(partName: string, category: string, vehicl
       condition: condition,
       seller: `Seller${i + 1}`,
       url: generateRealisticUrl(searchQuery, source, i),
-      imageUrl: `https://via.placeholder.com/150x150/cccccc/666666?text=${encodeURIComponent(partName)}`,
+      imageUrl: `data:image/svg+xml;base64,${Buffer.from(`
+        <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100%" height="100%" fill="#cccccc"/>
+          <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="10" fill="#666666">
+            ${partName.replace(/[<>]/g, '')}
+          </text>
+        </svg>
+      `).toString('base64')}`,
       listingDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
       source: source
     })

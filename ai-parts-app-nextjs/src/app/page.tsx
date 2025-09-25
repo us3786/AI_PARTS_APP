@@ -12,6 +12,7 @@ import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard'
 import { VehicleManagement } from '@/components/dashboard/VehicleManagement'
 import { VehiclePhotosDashboard } from '@/components/dashboard/VehiclePhotosDashboard'
 import { ImageManagementDashboard } from '@/components/dashboard/ImageManagementDashboard'
+import { BackgroundImageHunter } from '@/components/dashboard/BackgroundImageHunter'
 import { SectionNavigation } from '@/components/navigation/SectionNavigation'
 import { Vehicle } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -64,7 +65,35 @@ export default function Home() {
       
       const populateData = await populateResponse.json()
       if (populateData.success) {
-        console.log(`✅ Parts populated: ${populateData.createdCount} new parts added`)
+        // Compute the count with fallbacks to avoid undefined
+        const addedCount =
+          typeof populateData?.createdCount === "number"
+            ? populateData.createdCount
+            : Array.isArray(populateData?.parts)
+              ? populateData.parts.length
+              : (typeof populateData?.totalParts === "number" ? populateData.totalParts : 0);
+        
+        console.log(`✅ Parts populated: ${addedCount} new parts added`)
+        
+        // Start background image hunting after parts population
+        console.log('🖼️ Starting background image hunting...')
+        try {
+          const imageHuntResponse = await fetch('/api/background/image-hunter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              vehicleId: decodedVehicle.id,
+              batchSize: 3 // Start with 3 parts to avoid overwhelming
+            })
+          })
+          
+          if (imageHuntResponse.ok) {
+            const imageHuntData = await imageHuntResponse.json()
+            console.log(`🎉 Background image hunting started: ${imageHuntData.processed} parts queued`)
+          }
+        } catch (imageHuntError) {
+          console.warn('⚠️ Background image hunting failed to start:', imageHuntError)
+        }
       } else {
         console.warn('⚠️ Parts population failed:', populateData.message)
       }
@@ -202,6 +231,7 @@ export default function Home() {
               <VehiclePhotosDashboard vehicleId={vehicle.id} />
             </div>
             <div id="image-management" data-section="image-management">
+              <BackgroundImageHunter vehicleId={vehicle.id} className="mb-6" />
               <ImageManagementDashboard vehicleId={vehicle.id} />
             </div>
             <div id="price-research" data-section="price-research">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { sanitizeHtml } from '@/utils/htmlSanitizer'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -421,7 +422,7 @@ export function EbayListingPreview({ vehicleId, className }: EbayListingPreviewP
                 <div className="mt-2 p-4 bg-gray-50 rounded-lg">
                   <div 
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: viewingListing.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewingListing.description) }}
                   />
                 </div>
               </div>

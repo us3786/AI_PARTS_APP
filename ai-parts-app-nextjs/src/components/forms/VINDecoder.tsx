@@ -91,8 +91,12 @@ export function VINDecoder({ onVehicleDecoded, className }: VINDecoderProps) {
 
       if (data.success) {
         console.log(`✅ Generated ${data.categories?.length || 0} part categories with ${data.parts?.length || 0} individual parts`)
-        // Trigger a refresh of the parts dashboard
-        window.dispatchEvent(new CustomEvent('partsUpdated'))
+        // Trigger a refresh of the parts dashboard with debouncing to prevent loops
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('partsUpdated', { 
+            detail: { source: 'vinDecoder', timestamp: Date.now() } 
+          }))
+        }, 1000) // 1 second delay to prevent immediate loops
       } else {
         console.error('AI suggestions failed:', data.message)
         console.error('Full error response:', data)

@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     // Transform the data for the frontend
     const transformedHistory = priceHistory.map(item => ({
       id: item.id,
+      partsMasterId: item.partsMaster.id, // Add this critical field
       partName: item.partsMaster.partName,
       category: item.partsMaster.category,
       subCategory: item.partsMaster.subCategory,

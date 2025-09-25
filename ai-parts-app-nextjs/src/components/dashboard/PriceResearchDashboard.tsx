@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -126,14 +126,19 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
   const [editingPrices, setEditingPrices] = useState<Record<string, number>>({})
   const [bulkPriceUpdate, setBulkPriceUpdate] = useState<number | null>(null)
   const [partImages, setPartImages] = useState<Record<string, any[]>>({})
+  const [imageLoadingProgress, setImageLoadingProgress] = useState({ loaded: 0, total: 0, loading: false })
+  const [imageLoadingDetails, setImageLoadingDetails] = useState<string[]>([])
+  const imageLoadingStarted = useRef(false)
 
   const fetchAvailableCategories = async () => {
     try {
+      // Get existing inventory without creating new parts (read-only)
       const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
       const data = await response.json()
       
       if (data.success && data.categories) {
         setAvailableCategories(data.categories)
+        console.log(`✅ Loaded ${data.categories.length} categories from existing inventory`)
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
@@ -144,9 +149,22 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
     if (vehicleId) {
       fetchAvailableCategories()
       fetchPriceHistory()
+      // Only load existing data once when vehicleId changes
       loadExistingResearchData()
     }
   }, [vehicleId])
+
+  // Separate effect to prevent infinite loops
+  useEffect(() => {
+    // Reset research results when vehicle changes to prevent stale data
+    if (vehicleId) {
+      setResearchResults([])
+      setSummary(null)
+      setPartImages({}) // Clear existing images
+      imageLoadingStarted.current = false // Reset image loading flag
+    }
+  }, [vehicleId])
+
 
   const loadExistingResearchData = async () => {
     try {
@@ -155,33 +173,70 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
       const data = await response.json()
       
       if (data.success && data.history && data.history.length > 0) {
-        // Convert history data to research results format
-        const results = data.history.map((item: any) => ({
-          partId: item.id,
-          partName: item.partName,
-          success: true,
-          sources: item.sources || 1,
-          marketAnalysis: {
-            averagePrice: item.averagePrice || 0,
-            minPrice: item.minPrice || item.averagePrice || 0,
-            maxPrice: item.maxPrice || item.averagePrice || 0,
-            recommendedPrice: item.averagePrice || 0,
-            marketTrend: item.marketTrend || 'stable',
-            confidence: item.confidence || 75,
-            sourceCount: item.sources || 1,
-            referenceListings: item.marketAnalysis?.referenceListings || item.marketAnalysis?.allSources || [],
-            anomalyDetected: false,
-            priceEvaluation: item.marketAnalysis || {}
-          },
-          recommendedPrice: item.averagePrice || 0
-        }))
+        // Filter out any data that contains old placeholder URLs
+        const cleanHistory = data.history.filter((item: any) => {
+          const marketAnalysisStr = JSON.stringify(item.marketAnalysis || {})
+          return !marketAnalysisStr.includes('via.placeholder.com') && !marketAnalysisStr.includes('placeholder.com')
+        })
 
-        // Calculate summary
+        if (cleanHistory.length === 0) {
+          console.log('⚠️ Found existing data but it contains old placeholder URLs - skipping load')
+          return
+        }
+
+        // Convert history data to research results format and deduplicate by partName
+        const uniqueParts = new Map()
+        cleanHistory.forEach((item: any) => {
+          const partName = item.partName
+          if (!uniqueParts.has(partName)) {
+            uniqueParts.set(partName, {
+              partId: item.partsMasterId || item.id, // Use partsMasterId if available, fallback to id
+              partName: item.partName,
+              success: true,
+              sources: item.sources || 1,
+              marketAnalysis: {
+                averagePrice: item.averagePrice || 0,
+                minPrice: item.minPrice || item.averagePrice || 0,
+                maxPrice: item.maxPrice || item.averagePrice || 0,
+                recommendedPrice: item.averagePrice || 0,
+                marketTrend: item.marketTrend || 'stable',
+                confidence: item.confidence || 75,
+                sourceCount: item.sources || 1,
+                referenceListings: item.marketAnalysis?.referenceListings || item.marketAnalysis?.allSources || [],
+                anomalyDetected: false,
+                priceEvaluation: item.marketAnalysis || {}
+              },
+              recommendedPrice: item.averagePrice || 0
+            })
+          }
+        })
+        
+        const results = Array.from(uniqueParts.values())
+        
+        console.log('🔍 Sample research results partIds:', results.slice(0, 3).map(r => ({
+          partId: r.partId,
+          partName: r.partName
+        })))
+        
+        // Log the raw history data to see what partsMasterId values we have
+        console.log('🔍 Sample raw history data:', cleanHistory.slice(0, 3).map(item => ({
+          id: item.id,
+          partsMasterId: item.partsMasterId,
+          partName: item.partName
+        })))
+
+        // Calculate summary - use actual unique parts count, not duplicate research entries
         const totalSources = results.reduce((sum: number, r: any) => sum + (r.sources || 0), 0)
         const totalValue = results.reduce((sum: number, r: any) => sum + (r.marketAnalysis?.averagePrice || 0), 0)
+        
+        // Get actual parts count from inventory to avoid duplicate research entries
+        const actualPartsCount = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+          .then(res => res.json())
+          .then(data => data.success ? data.totalParts : results.length)
+          .catch(() => results.length)
 
         const summary = {
-          totalParts: results.length,
+          totalParts: actualPartsCount,
           successfulParts: results.length,
           failedParts: 0,
           totalSources: totalSources,
@@ -193,7 +248,7 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         setResearchResults(results)
         setSummary(summary)
 
-        console.log('✅ Loaded existing research data')
+        console.log('✅ Loaded existing research data (filtered out old placeholder URLs)')
         // Note: Removed automatic image fetching to prevent browser hanging
       }
     } catch (error) {
@@ -214,12 +269,169 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
     }
   }
 
+  const loadAllImagesWithProgress = useCallback(async () => {
+    const partsNeedingImages = researchResults.filter(result => 
+      result.success && result.partId && !partImages[result.partId]
+    )
+    
+    if (partsNeedingImages.length === 0) {
+      console.log('✅ All parts already have images loaded')
+      return
+    }
+
+    setImageLoadingProgress({ loaded: 0, total: partsNeedingImages.length, loading: true })
+    setImageLoadingDetails([])
+
+    console.log(`🖼️ Starting to load images for ${partsNeedingImages.length} parts...`)
+
+    for (let i = 0; i < partsNeedingImages.length; i++) {
+      const result = partsNeedingImages[i]
+      if (result.success && result.partId) {
+        try {
+          await loadExistingPartImages(result.partId)
+          setImageLoadingProgress(prev => ({ ...prev, loaded: i + 1 }))
+          setImageLoadingDetails(prev => [...prev, `✅ Loaded images for ${result.partName}`])
+          console.log(`📸 Progress: ${i + 1}/${partsNeedingImages.length} - ${result.partName}`)
+          
+          // Small delay to prevent overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 200))
+        } catch (error) {
+          console.error(`❌ Failed to load images for ${result.partName}:`, error)
+          setImageLoadingDetails(prev => [...prev, `❌ Failed to load images for ${result.partName}`])
+        }
+      }
+    }
+
+    setImageLoadingProgress(prev => ({ ...prev, loading: false }))
+    console.log(`🎉 Completed loading images for ${partsNeedingImages.length} parts!`)
+  }, [researchResults, partImages])
+
+  // Auto-start image loading when research results are available
+  useEffect(() => {
+    if (researchResults.length > 0 && !imageLoadingProgress.loading && !imageLoadingStarted.current) {
+      console.log('🚀 Auto-starting image loading for', researchResults.length, 'parts...')
+      imageLoadingStarted.current = true
+      // Start loading images automatically but with a small delay
+      setTimeout(() => {
+        loadAllImagesWithProgress()
+      }, 1000)
+    }
+  }, [researchResults.length, imageLoadingProgress.loading, loadAllImagesWithProgress]) // Only trigger when research results change
+
+  const loadExistingPartImages = async (partId: string) => {
+    try {
+      console.log('🔍 Loading EXISTING images for partId:', partId)
+      
+      // Use the populate-inventory API to get parts data with images
+      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+      
+      if (!response.ok) {
+        console.error('❌ API response not OK:', response.status, response.statusText)
+        return
+      }
+      
+      const data = await response.json()
+      console.log('📸 Inventory data response for partId', partId, ':', data)
+      
+      if (data.success && data.inventory && Array.isArray(data.inventory)) {
+        console.log('🔍 Searching for partId:', partId)
+        console.log('📋 Sample inventory items:', data.inventory.slice(0, 3).map(item => ({
+          id: item.id,
+          partsMasterId: item.partsMasterId,
+          partsMaster: item.partsMaster ? {
+            id: item.partsMaster.id,
+            partName: item.partsMaster.partName
+          } : null
+        })))
+        
+        // Log the actual part IDs we're searching for vs what's in inventory
+        console.log('🔍 Searching for partId:', partId)
+        console.log('📋 Available partIds in inventory:', data.inventory.slice(0, 5).map(item => ({
+          inventoryId: item.id,
+          partsMasterId: item.partsMasterId,
+          partsMasterIdFromMaster: item.partsMaster?.id
+        })))
+        
+        // Check if any inventory item matches our partId
+        const matchingItems = data.inventory.filter(item => 
+          item.id === partId || 
+          item.partsMasterId === partId ||
+          item.partsMaster?.id === partId
+        )
+        console.log('🔍 Matching items found:', matchingItems.length)
+        
+        // Find the specific part in the inventory by ID or name
+        const partData = data.inventory.find((item: any) => 
+          item.partsMaster?.id === partId || 
+          item.partsMasterId === partId ||
+          item.id === partId ||
+          item.partsMaster?.partName === partId // Fallback to name matching
+        )
+        
+        if (partData) {
+          console.log('✅ Found part data:', {
+            id: partData.id,
+            partsMasterId: partData.partsMasterId,
+            partName: partData.partsMaster?.partName,
+            hasImages: partData.partsMaster?.images ? 'yes' : 'no',
+            imageCount: partData.partsMaster?.images?.length || 0
+          })
+          
+          if (partData.partsMaster?.images && Array.isArray(partData.partsMaster.images)) {
+            // Filter out placeholder images
+            const realImages = partData.partsMaster.images.filter((img: any) => 
+              typeof img === 'object' && 
+              img.url && 
+              !img.url.includes('via.placeholder.com') && 
+              !img.url.includes('placeholder.com')
+            )
+            
+            if (realImages.length > 0) {
+              // Limit to 6 images for eBay compatibility (max 12 total - 6 part images + 6 car pictures)
+              const limitedImages = realImages.slice(0, 6)
+              
+              // Only update if we don't already have images for this part to prevent unnecessary re-renders
+              setPartImages(prev => {
+                if (prev[partId]) {
+                  console.log('⚠️ Images already exist for partId', partId, '- skipping update to prevent re-render')
+                  return prev
+                }
+                return {
+                  ...prev,
+                  [partId]: limitedImages
+                }
+              })
+              console.log('✅ EXISTING images loaded for partId', partId, ':', limitedImages.length, 'images (limited to 6 for eBay from', realImages.length, 'total)')
+            } else {
+              console.log('⚠️ No real images found for partId', partId, '(filtered from', partData.partsMaster.images.length, 'total images)')
+            }
+          } else {
+            console.log('⚠️ No images array found for partId', partId)
+          }
+        } else {
+          console.log('❌ No part data found for partId', partId)
+        }
+      } else {
+        console.log('⚠️ No inventory data found')
+      }
+    } catch (error) {
+      console.error('❌ Error loading existing part images:', error)
+    }
+  }
+
   const fetchPartImages = async (partId: string) => {
     try {
       console.log('🔍 Fetching images for partId:', partId)
-      const response = await fetch(`/api/image-hunting?partId=${partId}`)
-      const data = await response.json()
       
+      // Use the new dedicated images API
+      const response = await fetch(`/api/parts/images?partId=${partId}&vehicleId=${vehicleId}`)
+      
+      if (!response.ok) {
+        console.error('❌ API response not OK:', response.status, response.statusText)
+        return
+      }
+      
+      const data = await response.json()
       console.log('📸 Image API response for partId', partId, ':', data)
       
       if (data.success && data.images && data.images.length > 0) {
@@ -301,8 +513,14 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
         return sum + (result.marketAnalysis?.averagePrice || 0)
       }, 0)
 
+        // Get actual parts count from inventory to avoid duplicate research entries
+        const actualPartsCount = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+          .then(res => res.json())
+          .then(data => data.success ? data.totalParts : results.length)
+          .catch(() => results.length)
+
         const summary: ResearchSummary = {
-        totalParts: results.length,
+        totalParts: actualPartsCount,
         successfulParts: successfulResults.length,
           failedParts: failedResults.length,
           totalSources: results.reduce((sum: number, r: any) => sum + (r.sources || 0), 0),
@@ -393,7 +611,8 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                 year: data.vehicle?.year,
                 category: part.partsMaster.category,
                 subCategory: part.partsMaster.subCategory,
-                maxImages: 5
+                maxImages: 5,
+                vehicleId: vehicleId // Add vehicleId to the request
               })
             })
 
@@ -732,6 +951,19 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
             </Button>
 
             <Button
+              onClick={loadAllImagesWithProgress}
+              disabled={researchResults.length === 0 || imageLoadingProgress.loading}
+              variant="outline"
+              className="transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+              title="Load existing images from database"
+            >
+              <ImageIcon className="h-4 w-4 mr-2" />
+              {imageLoadingProgress.loading 
+                ? `Loading Images (${imageLoadingProgress.loaded}/${imageLoadingProgress.total})` 
+                : 'Load All Images'}
+            </Button>
+
+            <Button
               onClick={() => setViewingHistory(true)}
               variant="outline"
               className="transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
@@ -776,6 +1008,28 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                   📦 {progressDetails.cached} parts loaded from cache
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Image Loading Progress */}
+          {imageLoadingProgress.loading && (
+            <div className="space-y-2 p-4 bg-blue-50 rounded-lg">
+              <div className="flex justify-between text-sm font-medium">
+                <span>🖼️ Loading Images from Database</span>
+                <span>{imageLoadingProgress.loaded}/{imageLoadingProgress.total} parts</span>
+              </div>
+              <Progress 
+                value={(imageLoadingProgress.loaded / imageLoadingProgress.total) * 100} 
+                className="w-full" 
+              />
+              <div className="text-xs text-blue-600 max-h-32 overflow-y-auto">
+                {imageLoadingDetails.slice(-5).map((detail, index) => (
+                  <div key={index} className="truncate">{detail}</div>
+                ))}
+                {imageLoadingDetails.length > 5 && (
+                  <div className="text-gray-500">... and {imageLoadingDetails.length - 5} more</div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -932,22 +1186,25 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                       <TableCell>
                         <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                           {(() => {
-                            // First try to get image from part images (hunted images)
+                            // First try to get image from part images (real database images)
                             const partImagesList = partImages[result.partId] || []
-                            const huntedImage = partImagesList[0]
+                            const realImage = partImagesList[0]
                             
-                            // Then try reference listings image
+                            // Then try reference listings image (but filter out placeholders)
                             const referenceImage = result.marketAnalysis.referenceListings?.[0]?.imageUrl
+                            const cleanReferenceImage = referenceImage && 
+                              !referenceImage.includes('via.placeholder.com') && 
+                              !referenceImage.includes('placeholder.com') ? referenceImage : null
                             
-                            // Debug logging (reduced to prevent performance issues)
-                            if (partImagesList.length > 0 && Math.random() < 0.01) { // Only log 1% of the time
-                              console.log('Found images for partId', result.partId, ':', partImagesList.length, 'images')
+                            // Debug logging
+                            if (partImagesList.length > 0) {
+                              console.log('🖼️ Found', partImagesList.length, 'real images for', result.partName)
                             }
                             
-                            // Use hunted image if available, otherwise reference image, otherwise placeholder
-                            const imageUrl = huntedImage?.url || referenceImage
+                            // Use real image if available, otherwise clean reference image, otherwise placeholder
+                            const imageUrl = realImage?.url || cleanReferenceImage
                             
-                            if (imageUrl) {
+                            if (imageUrl && !imageUrl.includes('via.placeholder.com') && !imageUrl.includes('placeholder.com')) {
                               return (
                                 <img 
                                   src={imageUrl} 
@@ -961,9 +1218,10 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                                     }
                                   }}
                                   onError={(e) => {
-                                    // If image fails to load, show placeholder
-                                    e.currentTarget.style.display = 'none'
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                                    // If image fails to load, show local placeholder
+                                    const el = e.currentTarget as HTMLImageElement
+                                    el.onerror = null // prevent loops
+                                    el.src = `/api/placeholder?text=${encodeURIComponent(result.partName)}&w=150&h=150`
                                   }}
                                   title="Click to view all images for this vehicle"
                                 />
@@ -971,17 +1229,19 @@ export function PriceResearchDashboard({ vehicleId, className }: PriceResearchDa
                             }
                             
                             return (
-                              <div className="text-gray-400 text-xs text-center">
-                                <div className="mb-1">📷</div>
-                                <div>No Image</div>
-                                <button 
-                                  onClick={() => fetchPartImages(result.partId)}
-                                  className="text-blue-500 hover:text-blue-700 text-xs underline mt-1"
-                                  title="Hunt for images"
-                                >
-                                  Hunt
-                                </button>
-                              </div>
+                              <img 
+                                src={`/api/placeholder?text=${encodeURIComponent(result.partName)}&w=150&h=150`}
+                                alt={result.partName}
+                                className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => fetchPartImages(result.partId)}
+                                onError={(e) => {
+                                  // Ultimate fallback to static SVG
+                                  const el = e.currentTarget as HTMLImageElement
+                                  el.onerror = null // prevent loops
+                                  el.src = `/api/placeholder?static=1`
+                                }}
+                                title="Click to hunt for images"
+                              />
                             )
                           })()}
                         </div>

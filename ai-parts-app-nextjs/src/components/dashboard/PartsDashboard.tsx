@@ -38,7 +38,7 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
 
       const data = await response.json()
 
-      if (data.success) {
+      if (data.success && data.inventory && Array.isArray(data.inventory)) {
         // Transform inventory data to match the expected Part interface
         const transformedParts = data.inventory.map((item: any) => ({
           id: item.id,
@@ -92,16 +92,37 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
     }
   }, [vehicleId])
 
-  // Listen for parts updates from VIN decoder
+  // Listen for parts updates from VIN decoder with debouncing
   useEffect(() => {
-    const handlePartsUpdate = () => {
+    let lastUpdateTime = 0
+    const debounceDelay = 2000 // 2 seconds
+
+    const handlePartsUpdate = (event: CustomEvent) => {
+      const now = Date.now()
+      const eventTime = event.detail?.timestamp || now
+      
+      // Debounce to prevent rapid successive updates
+      if (now - lastUpdateTime < debounceDelay) {
+        console.log('🔄 Parts update debounced - too soon since last update')
+        return
+      }
+      
+      // Check if this event is from a different source to avoid loops
+      if (event.detail?.source === 'partsDashboard') {
+        console.log('🔄 Parts update ignored - came from parts dashboard itself')
+        return
+      }
+
+      lastUpdateTime = now
+      console.log('🔄 Parts update received from:', event.detail?.source || 'unknown')
+      
       if (vehicleId) {
         fetchParts()
       }
     }
 
-    window.addEventListener('partsUpdated', handlePartsUpdate)
-    return () => window.removeEventListener('partsUpdated', handlePartsUpdate)
+    window.addEventListener('partsUpdated', handlePartsUpdate as EventListener)
+    return () => window.removeEventListener('partsUpdated', handlePartsUpdate as EventListener)
   }, [vehicleId])
 
   const fetchRealPrices = async () => {
@@ -475,7 +496,14 @@ export function PartsDashboard({ vehicleId, className }: PartsDashboardProps) {
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               // Fallback to placeholder if image fails to load
-                              e.currentTarget.src = `https://via.placeholder.com/200x200/e5e7eb/6b7280?text=${encodeURIComponent(part.description.substring(0, 15))}`
+                              e.currentTarget.src = `data:image/svg+xml;base64,${btoa(`
+                                <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+                                  <rect width="100%" height="100%" fill="#e5e7eb"/>
+                                  <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">
+                                    ${part.description.substring(0, 15).replace(/[<>]/g, '')}
+                                  </text>
+                                </svg>
+                              `)}`
                             }}
                           />
                         ) : (

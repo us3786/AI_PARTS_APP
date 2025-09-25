@@ -1,0 +1,3 @@
+  cleaned-main    [m 3501cc5 Enable LFS for large model artifacts
+* [32mmain            [m 57dfe84 [[34morigin/main[m] Your descriptive commit message
+  pre-clean-backup[m cd87672 Stop tracking venv/node_modules/build artifacts

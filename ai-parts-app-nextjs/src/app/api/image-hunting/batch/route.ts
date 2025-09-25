@@ -94,7 +94,14 @@ export async function POST(request: NextRequest) {
           // Generate sample images instead of hunting to reduce resource usage
           const sampleImages = [
             {
-              url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=${encodeURIComponent(part.partName.substring(0, 20))}`,
+              url: `data:image/svg+xml;base64,${Buffer.from(`
+                <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="100%" height="100%" fill="#4f46e5"/>
+                  <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">
+                    ${part.partName.substring(0, 20).replace(/[<>]/g, '')}
+                  </text>
+                </svg>
+              `).toString('base64')}`,
               source: 'Sample Image',
               title: `${part.partName} - Sample Image`,
               quality: 85,

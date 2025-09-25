@@ -23,7 +23,28 @@ const IMAGE_SOURCES = {
 
 export async function POST(request: NextRequest) {
   try {
-    const { partId, partName, make, model, year, category, subCategory, maxImages = 10 } = await request.json()
+    // Check if request has body
+    const contentType = request.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      return NextResponse.json(
+        { success: false, message: 'Content-Type must be application/json' },
+        { status: 400 }
+      )
+    }
+
+    // Parse JSON with error handling
+    let requestBody
+    try {
+      requestBody = await request.json()
+    } catch (parseError) {
+      console.error('❌ JSON parsing error:', parseError)
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const { partId, partName, make, model, year, category, subCategory, maxImages = 12, vehicleId } = requestBody
     
     if (!partId || !partName) {
       return NextResponse.json(
@@ -32,9 +53,97 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`🖼️ Starting image hunting for: ${partName} (${year} ${make} ${model})`)
+    console.log(`🔍 Reading images for: ${partName} (${year} ${make} ${model})`)
 
-    const vehicleQuery = `${year} ${make} ${model}`.trim()
+    // FIRST: Check if we already have images in database
+    const existingPart = await prisma.partsMaster.findUnique({
+      where: { id: partId },
+      select: { 
+        images: true, 
+        partName: true 
+      }
+    })
+
+    if (existingPart && existingPart.images && Array.isArray(existingPart.images) && existingPart.images.length > 0) {
+      // Filter out placeholder images
+      const realImages = existingPart.images.filter((img: any) => 
+        img.url && 
+        !img.url.includes('via.placeholder.com') && 
+        !img.url.includes('placeholder.com') &&
+        !img.url.includes('data:image/svg')
+      )
+
+      if (realImages.length > 0) {
+        console.log(`✅ Using existing images from database for ${partName}: ${realImages.length} images`)
+        return NextResponse.json({
+          success: true,
+          partId: partId,
+          partName: partName,
+          images: realImages,
+          totalImages: realImages.length,
+          sources: [...new Set(realImages.map((img: any) => img.source))],
+          fromCache: true
+        })
+      }
+    }
+
+    // SECOND: If no real images, trigger background hunting and return placeholder
+    console.log(`🔄 No real images found, triggering background image hunting for ${partName}`)
+    
+    // Trigger background image hunting (non-blocking)
+    fetch(`${process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'}/api/background/image-hunter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vehicleId: vehicleId || 'unknown',
+        partIds: [partId],
+        batchSize: 1
+      })
+    }).catch(err => {
+      console.error('❌ Background image hunting trigger failed:', err)
+      // Don't throw - this is non-blocking
+    })
+
+    // Return placeholder images for now
+    const placeholderImages = [
+      {
+        url: `/api/placeholder?text=${encodeURIComponent(partName)}&w=400&h=300`,
+        title: `${partName} - Image hunting in progress`,
+        source: 'placeholder',
+        quality: 50,
+        width: 400,
+        height: 300,
+        fetchedAt: new Date().toISOString()
+      }
+    ]
+
+    return NextResponse.json({
+      success: true,
+      partId: partId,
+      partName: partName,
+      images: placeholderImages,
+      totalImages: placeholderImages.length,
+      sources: ['placeholder'],
+      note: 'Background image hunting in progress'
+    })
+
+  } catch (error) {
+    console.error('❌ Image hunting error:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Image hunting failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// Keep the old hunting functions for background service use
+async function huntImagesFromWeb(partName: string, vehicleQuery: string, maxImages: number) {
+  try {
+    const vehicleQuery = `${vehicleQuery}`.trim()
     const imageResults = []
 
     // 1. eBay Image Hunting
@@ -115,7 +224,7 @@ export async function POST(request: NextRequest) {
     // Save images to database
     const savedImages = await savePartImages(partId, topImages)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Image hunting completed for ${partName}`,
       images: topImages,
@@ -123,10 +232,17 @@ export async function POST(request: NextRequest) {
       totalSaved: savedImages.length,
       sources: [...new Set(topImages.map(img => img.source))]
     })
+    
+    // Add cache-busting headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
 
   } catch (error) {
     console.error('Image hunting error:', error)
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         success: false, 
         message: 'Failed to complete image hunting',
@@ -134,6 +250,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+    
+    // Add cache-busting headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
   }
 }
 
@@ -409,9 +532,10 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source')
     const skipHunting = searchParams.get('skipHunting') === 'true'
 
-    console.log('Image hunting GET request for partId:', partId, 'source:', source, 'skipHunting:', skipHunting)
+    console.log('🔍 Image hunting GET request for partId:', partId, 'source:', source, 'skipHunting:', skipHunting)
 
     if (!partId) {
+      console.log('❌ No partId provided')
       return NextResponse.json(
         { success: false, message: 'Part ID is required' },
         { status: 400 }
@@ -422,33 +546,62 @@ export async function GET(request: NextRequest) {
     let partsMaster = null
     let partsInventory = null
     
-    // First, try to find directly in partsMaster
-    partsMaster = await prisma.partsMaster.findUnique({
-      where: { id: partId },
-      select: { images: true, partName: true, id: true }
-    })
-
-    // If not found, try to find via partsInventory (most common case)
-    if (!partsMaster) {
-      partsInventory = await prisma.partsInventory.findUnique({
+    try {
+      console.log('🔍 Searching for part in database...')
+      
+      // First, try to find directly in partsMaster
+      partsMaster = await prisma.partsMaster.findUnique({
         where: { id: partId },
-        include: {
-          partsMaster: {
-            select: { images: true, partName: true, id: true }
-          }
-        }
+        select: { images: true, partName: true, id: true }
       })
       
-      if (partsInventory?.partsMaster) {
-        partsMaster = partsInventory.partsMaster
+      console.log('🔍 Direct partsMaster search result:', partsMaster ? 'Found' : 'Not found')
+
+      // If not found, try to find via partsInventory (most common case)
+      if (!partsMaster) {
+        console.log('🔍 Searching via partsInventory...')
+        partsInventory = await prisma.partsInventory.findUnique({
+          where: { id: partId },
+          include: {
+            partsMaster: {
+              select: { images: true, partName: true, id: true }
+            }
+          }
+        })
+        
+        if (partsInventory?.partsMaster) {
+          partsMaster = partsInventory.partsMaster
+          console.log('✅ Found part via partsInventory:', partsMaster.partName)
+        } else {
+          console.log('❌ Part not found via partsInventory')
+        }
+      } else {
+        console.log('✅ Found part directly:', partsMaster.partName)
       }
+    } catch (dbError) {
+      console.error('❌ Database error:', dbError)
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Database error occurred',
+          error: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        },
+        { status: 500 }
+      )
     }
 
     if (!partsMaster) {
       // If part doesn't exist yet, return sample images for demonstration
       const sampleImages = [
         {
-          url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=Sample+Part+Image`,
+          url: `data:image/svg+xml;base64,${Buffer.from(`
+            <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#4f46e5"/>
+              <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">
+                Sample Part Image
+              </text>
+            </svg>
+          `).toString('base64')}`,
           source: 'Sample Image',
           title: 'Sample Part Image',
           quality: 85,
@@ -457,7 +610,14 @@ export async function GET(request: NextRequest) {
           addedDate: new Date().toISOString()
         },
         {
-          url: `https://via.placeholder.com/350x250/059669/ffffff?text=Alternative+View`,
+          url: `data:image/svg+xml;base64,${Buffer.from(`
+            <svg width="350" height="250" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#059669"/>
+              <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="12" fill="#ffffff">
+                Alternative View
+              </text>
+            </svg>
+          `).toString('base64')}`,
           source: 'Sample Image',
           title: 'Alternative View',
           quality: 80,
@@ -508,7 +668,14 @@ export async function GET(request: NextRequest) {
     if (images.length === 0) {
       images = [
         {
-          url: `https://via.placeholder.com/400x300/4f46e5/ffffff?text=${encodeURIComponent(partsMaster.partName.substring(0, 20))}`,
+          url: `data:image/svg+xml;base64,${Buffer.from(`
+            <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#4f46e5"/>
+              <text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="Arial, sans-serif" font-size="14" fill="#ffffff">
+                ${partsMaster.partName.substring(0, 20).replace(/[<>]/g, '')}
+              </text>
+            </svg>
+          `).toString('base64')}`,
           source: 'Sample Image',
           title: `${partsMaster.partName} - Sample Image`,
           quality: 85,

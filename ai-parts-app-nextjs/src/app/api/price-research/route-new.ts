@@ -58,10 +58,7 @@ export async function POST(request: NextRequest) {
         category,
         vehicleId
       })
-    }).catch(err => {
-      console.error('❌ Background price research trigger failed:', err)
-      // Don't throw - this is non-blocking
-    })
+    }).catch(err => console.error('Background price research trigger failed:', err))
 
     // Return any existing data or placeholder
     const fallbackResearch = await prisma.priceResearch.findFirst({

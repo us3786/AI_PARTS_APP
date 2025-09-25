@@ -36,6 +36,11 @@ interface ImageStats {
   formats: Record<string, number>
   processingQueue: number
   cdnEnabled: boolean
+  breakdown?: {
+    vehiclePhotos: number
+    partsImages: number
+    partsWithImages: number
+  }
 }
 
 interface ProcessingJob {
@@ -203,6 +208,27 @@ export function ImageManagementDashboard({ vehicleId, className }: ImageManageme
               <div className="text-sm text-orange-600">Processing Queue</div>
             </div>
           </div>
+
+          {/* Image Breakdown */}
+          {stats.breakdown && (
+            <div className="mt-6">
+              <h4 className="font-medium text-gray-900 mb-3">Image Source Breakdown</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-lg font-bold text-blue-900">{stats.breakdown.vehiclePhotos}</div>
+                  <div className="text-xs text-blue-600">Vehicle Photos</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-lg font-bold text-green-900">{stats.breakdown.partsImages}</div>
+                  <div className="text-xs text-green-600">Parts Images</div>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <div className="text-lg font-bold text-purple-900">{stats.breakdown.partsWithImages}</div>
+                  <div className="text-xs text-purple-600">Parts with Images</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Format Distribution */}
           {Object.keys(stats.formats).length > 0 && (

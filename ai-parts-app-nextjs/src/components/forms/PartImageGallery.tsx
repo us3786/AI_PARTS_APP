@@ -57,6 +57,7 @@ export function PartImageGallery({
   // Load existing images from database when dialog opens
   useEffect(() => {
     if (isOpen && images.length === 0) {
+      // Only load existing images, don't trigger web hunting automatically
       loadExistingImages()
     }
   }, [isOpen])
@@ -64,14 +65,51 @@ export function PartImageGallery({
   const loadExistingImages = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/image-hunting?partId=${partId}&skipHunting=true`)
-      const data = await response.json()
+      console.log('🔍 Loading existing images for partId:', partId)
       
-      if (data.success && data.images && data.images.length > 0) {
-        setImages(data.images)
+      // Use the populate-inventory API to get parts data with images
+      const response = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
+      
+      if (!response.ok) {
+        console.error('❌ API response not OK:', response.status, response.statusText)
+        return
+      }
+      
+      const data = await response.json()
+      console.log('📸 Inventory data for', partName, ':', data)
+      
+      if (data.success && data.inventory && Array.isArray(data.inventory)) {
+        // Find the specific part in the inventory
+        const partData = data.inventory.find((item: any) => 
+          item.partsMaster?.id === partId || item.partsMasterId === partId
+        )
+        
+        if (partData?.partsMaster?.images && Array.isArray(partData.partsMaster.images)) {
+          // Filter out placeholder images
+          const realImages = partData.partsMaster.images.filter((img: any) => 
+            typeof img === 'object' && 
+            img.url && 
+            !img.url.includes('via.placeholder.com') && 
+            !img.url.includes('placeholder.com')
+          )
+          
+          if (realImages.length > 0) {
+            // Limit to first 6 images for eBay (max 12 total - 6 part images + 6 car pictures)
+            const limitedImages = realImages.slice(0, 6)
+            setImages(limitedImages)
+            onImagesUpdate(limitedImages)
+            console.log('✅ Loaded', limitedImages.length, 'real images for', partName, '(limited to 6 for eBay from', realImages.length, 'total)')
+          } else {
+            console.log('⚠️ No real images found for', partName)
+          }
+        } else {
+          console.log('⚠️ No images found for', partName)
+        }
+      } else {
+        console.log('⚠️ No inventory data found')
       }
     } catch (err) {
-      console.error('Error loading existing images:', err)
+      console.error('❌ Error loading existing images:', err)
     } finally {
       setLoading(false)
     }
@@ -83,19 +121,38 @@ export function PartImageGallery({
     setSuccess(null)
 
     try {
-      const response = await fetch(`/api/image-hunting?partId=${partId}&skipHunting=false`)
+      console.log('🌐 Fetching images from web for partId:', partId)
+      const response = await fetch('/api/image-hunting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partId,
+          partName,
+          maxImages: 10
+        })
+      })
+      
+      if (!response.ok) {
+        console.error('❌ Image hunting API response not OK:', response.status, response.statusText)
+        setError('Failed to fetch images from web')
+        return
+      }
+      
       const data = await response.json()
+      console.log('🌐 Web fetch response for', partName, ':', data)
       
       if (data.success && data.images && data.images.length > 0) {
         setImages(data.images)
         onImagesUpdate(data.images)
         setSuccess(`Found ${data.images.length} images from web sources!`)
+        console.log('✅ Web fetch successful for', partName)
       } else {
         setError('No images found from web sources')
+        console.log('⚠️ No images found from web for', partName)
       }
     } catch (err) {
       setError('Failed to fetch images from web')
-      console.error('Web fetch error:', err)
+      console.error('❌ Web fetch error:', err)
     } finally {
       setFetching(false)
     }

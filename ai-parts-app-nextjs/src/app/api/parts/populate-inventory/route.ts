@@ -2,6 +2,67 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Vehicle } from '@/types'
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const vehicleId = searchParams.get('vehicleId')
+    
+    if (!vehicleId) {
+      return NextResponse.json(
+        { success: false, message: 'Vehicle ID is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`📖 Reading inventory for vehicle ${vehicleId} (read-only)`)
+
+    // Get existing inventory without creating new parts
+    const inventoryWithParts = await prisma.partsInventory.findMany({
+      where: { vehicleId },
+      include: {
+        partsMaster: true
+      },
+      orderBy: [
+        { partsMaster: { category: 'asc' } },
+        { partsMaster: { partName: 'asc' } }
+      ]
+    })
+
+    // Get available parts master data for categories
+    const availableParts = await prisma.partsMaster.findMany({
+      where: { isActive: true },
+      orderBy: [
+        { category: 'asc' },
+        { partName: 'asc' }
+      ]
+    })
+
+    const categories = [...new Set(availableParts.map(part => part.category))]
+
+    return NextResponse.json({
+      success: true,
+      message: `Found ${inventoryWithParts.length} existing parts for vehicle ${vehicleId}`,
+      inventory: inventoryWithParts,
+      availableParts,
+      categories,
+      totalParts: inventoryWithParts.length,
+      totalAvailable: availableParts.length,
+      readOnly: true
+    })
+
+  } catch (error) {
+    console.error('Error reading inventory:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Failed to read inventory',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { vehicleId, selectedCategories } = await request.json()
@@ -108,59 +169,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const vehicleId = searchParams.get('vehicleId')
-
-    if (!vehicleId) {
-      return NextResponse.json(
-        { success: false, message: 'Vehicle ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // Get existing inventory for the vehicle
-    const inventory = await prisma.partsInventory.findMany({
-      where: { vehicleId },
-      include: {
-        partsMaster: true
-      },
-      orderBy: [
-        { partsMaster: { category: 'asc' } },
-        { partsMaster: { partName: 'asc' } }
-      ]
-    })
-
-    // Get available parts master data
-    const availableParts = await prisma.partsMaster.findMany({
-      where: { isActive: true },
-      orderBy: [
-        { category: 'asc' },
-        { partName: 'asc' }
-      ]
-    })
-
-    const categories = [...new Set(availableParts.map(part => part.category))]
-
-    return NextResponse.json({
-      success: true,
-      inventory,
-      availableParts,
-      categories,
-      totalInventory: inventory.length,
-      totalAvailable: availableParts.length
-    })
-
-  } catch (error) {
-    console.error('Error fetching parts inventory:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Failed to fetch parts inventory',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
-  }
-}

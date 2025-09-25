@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -120,8 +120,15 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
   const [defaultHandlingTime, setDefaultHandlingTime] = useState('1')
   const [defaultReturnPolicy, setDefaultReturnPolicy] = useState('30')
   const [maxConcurrent, setMaxConcurrent] = useState(3)
+  const [searchTerm, setSearchTerm] = useState('')
 
-  const fetchVehicleAndParts = async () => {
+  const fetchVehicleAndParts = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loading) {
+      console.log('⏳ Already loading, skipping duplicate fetchVehicleAndParts call')
+      return
+    }
+    
     setLoading(true)
     setError(null)
 
@@ -132,32 +139,46 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
       
       if (vehicleData.success) {
         setVehicle(vehicleData.vehicle)
+        console.log('✅ Vehicle data loaded for bulk listing:', vehicleData.vehicle)
+      } else {
+        console.error('❌ Failed to load vehicle data:', vehicleData)
       }
 
       // Fetch parts
       const partsResponse = await fetch(`/api/parts/populate-inventory?vehicleId=${vehicleId}`)
       const partsData = await partsResponse.json()
 
-      if (partsData.success) {
+      if (partsData.success && partsData.inventory && Array.isArray(partsData.inventory)) {
         const availableParts = partsData.inventory.filter((part: Part) => 
           part.status === 'available' && part.currentValue > 0
         )
         setParts(availableParts)
 
-        // Initialize listing items
-        const items: ListingItem[] = availableParts.map((part: Part) => ({
-          partId: part.id,
-          partName: part.partsMaster.partName,
-          category: part.partsMaster.category,
-          condition: 'used', // Default to used as requested
-          price: part.currentValue || part.partsMaster.estimatedValue || 0,
-          title: '',
-          description: '',
-          keywords: '',
-          selected: false,
-          editing: false
-        }))
+        // Initialize listing items with research-based titles
+        const items: ListingItem[] = availableParts.map((part: Part) => {
+          // Create exact research search sentence for title using the loaded vehicle data
+          let researchTitle = part.partsMaster.partName
+          if (vehicleData.success && vehicleData.vehicle) {
+            researchTitle = `${vehicleData.vehicle.year} ${vehicleData.vehicle.make} ${vehicleData.vehicle.model} ${vehicleData.vehicle.engine || ''} ${vehicleData.vehicle.drivetrain || ''} ${part.partsMaster.partName}`.trim()
+          } else {
+            console.warn('⚠️ Vehicle data not available, using part name only for title')
+          }
+          
+          return {
+            partId: part.id,
+            partName: part.partsMaster.partName,
+            category: part.partsMaster.category,
+            condition: 'used', // Default to used as requested
+            price: part.currentValue || part.partsMaster.estimatedValue || 0,
+            title: researchTitle, // Use exact research sentence or fallback to part name
+            description: '',
+            keywords: '',
+            selected: false,
+            editing: false
+          }
+        })
         setListingItems(items)
+        console.log(`✅ Initialized ${items.length} listing items with research-based titles`)
       }
     } catch (err) {
       setError('Failed to fetch vehicle and parts data')
@@ -165,19 +186,56 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
     } finally {
       setLoading(false)
     }
-  }
+  }, [vehicleId, loading]) // Add dependencies for useCallback
+
+  // Function to update titles with vehicle data
+  const updateTitlesWithVehicleData = useCallback((vehicleData: any, items: ListingItem[]) => {
+    const updatedItems = items.map(item => {
+      const researchTitle = `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} ${vehicleData.engine || ''} ${vehicleData.drivetrain || ''} ${item.partName}`.trim()
+      return {
+        ...item,
+        title: researchTitle
+      }
+    })
+    setListingItems(updatedItems)
+    console.log('✅ Updated titles with vehicle data for', updatedItems.length, 'items')
+  }, []) // Empty dependency array since this function doesn't depend on any props or state
 
   useEffect(() => {
-    if (vehicleId) {
+    if (vehicleId && !vehicle) { // Only fetch if vehicleId exists and vehicle is not already loaded
       fetchVehicleAndParts()
     }
-  }, [vehicleId])
+  }, [vehicleId, vehicle, fetchVehicleAndParts]) // Add fetchVehicleAndParts to dependencies
+
+  // Update titles when vehicle data becomes available (only once)
+  useEffect(() => {
+    if (vehicle && listingItems.length > 0 && listingItems[0].title === listingItems[0].partName) {
+      updateTitlesWithVehicleData(vehicle, listingItems)
+    }
+  }, [vehicle, listingItems.length, updateTitlesWithVehicleData]) // Add updateTitlesWithVehicleData to dependencies
+
+  // Memoize filtered parts to prevent unnecessary recalculations
+  const filteredParts = useMemo(() => {
+    if (!searchTerm) return listingItems
+    
+    return listingItems.filter(item => 
+      item.partName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [listingItems, searchTerm])
 
   const generateAIDescriptions = async (selectedOnly = false) => {
     if (!vehicle) {
       setError('Vehicle information not available')
+      console.error('❌ Vehicle data is null:', vehicle)
       return
     }
+
+    console.log('🚀 Starting AI description generation...')
+    console.log('Vehicle data:', vehicle)
+    console.log('Selected only:', selectedOnly)
+    console.log('Total listing items:', listingItems.length)
 
     setAiGenerating(true)
     setError(null)
@@ -199,34 +257,61 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
         
         const promises = batch.map(async (item) => {
           try {
-            const response = await fetch('/api/ai/description', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                partName: item.partName,
-                make: vehicle.make,
-                model: vehicle.model,
-                year: vehicle.year,
-                engine: vehicle.engine,
-                drivetrain: vehicle.drivetrain,
-                condition: item.condition,
-                category: item.category
-              })
+            console.log(`🤖 Generating eBay content for: ${item.partName}`)
+            console.log('Request payload:', {
+              partName: item.partName,
+              make: vehicle.make,
+              model: vehicle.model,
+              year: vehicle.year,
+              engine: vehicle.engine,
+              drivetrain: vehicle.drivetrain,
+              condition: item.condition,
+              category: item.category,
+              price: item.price
             })
+            
+              const response = await fetch('/api/ai/ebay-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  partName: item.partName,
+                  make: vehicle.make,
+                  model: vehicle.model,
+                  year: vehicle.year,
+                  engine: vehicle.engine,
+                  drivetrain: vehicle.drivetrain,
+                  condition: item.condition,
+                  category: item.category,
+                  price: item.price,
+                  vin: vehicle.vin, // Add VIN for enhanced descriptions
+                  trim: vehicle.trim, // Add trim if available
+                  generateTitle: false, // Don't generate title, use research sentence
+                  generateDescription: true // Only generate description
+                })
+              })
+
+            if (!response.ok) {
+              console.error(`❌ API response not OK for ${item.partName}:`, response.status, response.statusText)
+              return item
+            }
 
             const data = await response.json()
             
             if (data.success) {
+              console.log(`✅ Generated description for ${item.partName}`)
+              console.log('Generated description preview:', data.description.substring(0, 100) + '...')
               return {
                 ...item,
-                title: data.title,
+                // Keep the research-based title, only update description
                 description: data.description,
-                keywords: data.keywords
+                keywords: data.keywords,
+                metadata: data.metadata
               }
             }
+            console.log(`⚠️ Failed to generate content for ${item.partName}:`, data.message)
             return item
           } catch (err) {
-            console.error(`Error generating description for ${item.partName}:`, err)
+            console.error(`❌ Error generating content for ${item.partName}:`, err)
             return item
           }
         })
@@ -247,7 +332,7 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
         }
       }
 
-      setSuccess(`Generated AI descriptions for ${itemsToProcess.length} parts`)
+      setSuccess(`Generated AI titles and descriptions for ${itemsToProcess.length} parts`)
     } catch (err) {
       setError('Failed to generate AI descriptions')
       console.error('AI generation error:', err)
@@ -271,9 +356,13 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
   }
 
   const selectAllItems = () => {
-    const allSelected = listingItems.every(item => item.selected)
+    const allSelected = filteredParts.every(item => item.selected)
     setListingItems(prev => 
-      prev.map(item => ({ ...item, selected: !allSelected }))
+      prev.map(item => {
+        // Only toggle items that are in the filtered results
+        const isInFiltered = filteredParts.some(filteredItem => filteredItem.partId === item.partId)
+        return isInFiltered ? { ...item, selected: !allSelected } : item
+      })
     )
   }
 
@@ -289,12 +378,43 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
     setError(null)
 
     try {
+      // First, map images for all selected items
+      console.log('🖼️ Mapping images for eBay upload...')
+      const imageMappingPromises = selectedItems.map(async (item) => {
+        try {
+          const imageResponse = await fetch('/api/ebay/image-mapping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              partId: item.partId,
+              vehicleId: vehicleId
+            })
+          })
+          
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            return {
+              ...item,
+              images: imageData.images || [],
+              primaryImage: imageData.primaryImage
+            }
+          }
+          return item
+        } catch (err) {
+          console.error(`❌ Error mapping images for ${item.partName}:`, err)
+          return item
+        }
+      })
+      
+      const itemsWithImages = await Promise.all(imageMappingPromises)
+      console.log('✅ Image mapping completed for', itemsWithImages.length, 'items')
+
       const response = await fetch('/api/ebay/listings/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vehicleId,
-          parts: selectedItems.map(item => ({
+          parts: itemsWithImages.map(item => ({
             partId: item.partId,
             title: item.title,
             description: item.description,
@@ -329,9 +449,9 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
     }
   }
 
-  const selectedCount = listingItems.filter(item => item.selected).length
-  const totalValue = listingItems.reduce((sum, item) => sum + item.price, 0)
-  const selectedValue = listingItems
+  const selectedCount = filteredParts.filter(item => item.selected).length
+  const totalValue = filteredParts.reduce((sum, item) => sum + item.price, 0)
+  const selectedValue = filteredParts
     .filter(item => item.selected)
     .reduce((sum, item) => sum + item.price, 0)
 
@@ -416,6 +536,24 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
           </div>
         </CardHeader>
         <CardContent>
+          {/* Search Input */}
+          <div className="mb-6">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search parts by name, title, or category..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="text-sm text-gray-600">
+                Showing {filteredParts.length} of {listingItems.length} parts
+              </div>
+            </div>
+          </div>
+          
           {/* Vehicle Info */}
           {vehicle && (
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
@@ -543,7 +681,7 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
           {/* Parts Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Parts Inventory ({parts.length} items)</CardTitle>
+          <CardTitle>Parts Inventory ({filteredParts.length} of {parts.length} items)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -569,7 +707,7 @@ export function BulkListingDashboard({ vehicleId, className }: BulkListingDashbo
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {listingItems.map((item) => (
+                {filteredParts.map((item) => (
                   <TableRow key={item.partId}>
                     <TableCell>
                       <input
