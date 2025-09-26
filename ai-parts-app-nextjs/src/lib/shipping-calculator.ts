@@ -156,6 +156,99 @@ const PART_SHIPPING_PROFILES: Record<string, PartShippingInfo> = {
     estimatedWeight: 1,
     estimatedDimensions: { length: 8, width: 8, height: 2, weight: 1 },
     shippingClass: 'standard'
+  },
+
+  // Additional 182 Parts Shipping Profiles
+  'Engine Mount - Left Front': {
+    category: 'Engine',
+    subCategory: 'Engine Mounts',
+    estimatedWeight: 8,
+    estimatedDimensions: { length: 8, width: 6, height: 4, weight: 8 },
+    shippingClass: 'standard'
+  },
+  'Engine Mount - Right Front': {
+    category: 'Engine',
+    subCategory: 'Engine Mounts',
+    estimatedWeight: 8,
+    estimatedDimensions: { length: 8, width: 6, height: 4, weight: 8 },
+    shippingClass: 'standard'
+  },
+  'Engine Mount - Left Rear': {
+    category: 'Engine',
+    subCategory: 'Engine Mounts',
+    estimatedWeight: 6,
+    estimatedDimensions: { length: 6, width: 5, height: 4, weight: 6 },
+    shippingClass: 'standard'
+  },
+  'Engine Mount - Right Rear': {
+    category: 'Engine',
+    subCategory: 'Engine Mounts',
+    estimatedWeight: 6,
+    estimatedDimensions: { length: 6, width: 5, height: 4, weight: 6 },
+    shippingClass: 'standard'
+  },
+  'Engine Mount - Transmission': {
+    category: 'Engine',
+    subCategory: 'Engine Mounts',
+    estimatedWeight: 5,
+    estimatedDimensions: { length: 6, width: 4, height: 3, weight: 5 },
+    shippingClass: 'standard'
+  },
+  'Front Exhaust Manifold': {
+    category: 'Engine',
+    subCategory: 'Exhaust Manifold',
+    estimatedWeight: 20,
+    estimatedDimensions: { length: 20, width: 12, height: 8, weight: 20 },
+    shippingClass: 'oversized'
+  },
+  'Rear Exhaust Manifold': {
+    category: 'Engine',
+    subCategory: 'Exhaust Manifold',
+    estimatedWeight: 20,
+    estimatedDimensions: { length: 20, width: 12, height: 8, weight: 20 },
+    shippingClass: 'oversized'
+  },
+  'Wheel Hub Assembly/Spindle - Front Left': {
+    category: 'Wheels',
+    subCategory: 'Hub Assembly',
+    estimatedWeight: 15,
+    estimatedDimensions: { length: 8, width: 8, height: 4, weight: 15 },
+    shippingClass: 'standard'
+  },
+  'Wheel Hub Assembly/Spindle - Front Right': {
+    category: 'Wheels',
+    subCategory: 'Hub Assembly',
+    estimatedWeight: 15,
+    estimatedDimensions: { length: 8, width: 8, height: 4, weight: 15 },
+    shippingClass: 'standard'
+  },
+  'Wheel Hub Assembly/Spindle - Rear Left': {
+    category: 'Wheels',
+    subCategory: 'Hub Assembly',
+    estimatedWeight: 12,
+    estimatedDimensions: { length: 7, width: 7, height: 3, weight: 12 },
+    shippingClass: 'standard'
+  },
+  'Wheel Hub Assembly/Spindle - Rear Right': {
+    category: 'Wheels',
+    subCategory: 'Hub Assembly',
+    estimatedWeight: 12,
+    estimatedDimensions: { length: 7, width: 7, height: 3, weight: 12 },
+    shippingClass: 'standard'
+  },
+  'Upper Coolant Hose (Engine to Radiator)': {
+    category: 'Cooling',
+    subCategory: 'Coolant Hoses',
+    estimatedWeight: 1,
+    estimatedDimensions: { length: 12, width: 4, height: 4, weight: 1 },
+    shippingClass: 'standard'
+  },
+  'Lower Coolant Hose (Radiator to Engine)': {
+    category: 'Cooling',
+    subCategory: 'Coolant Hoses',
+    estimatedWeight: 1,
+    estimatedDimensions: { length: 12, width: 4, height: 4, weight: 1 },
+    shippingClass: 'standard'
   }
 }
 

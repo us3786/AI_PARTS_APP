@@ -79,6 +79,8 @@ export default function Home() {
         // Images are now automatically collected during price research
         // No need for separate background image hunting
         console.log('✅ Images will be collected automatically during price research')
+      } else if (populateData.isDuplicate) {
+        console.log('⏳ Parts population already in progress, skipping...')
       } else {
         console.warn('⚠️ Parts population failed:', populateData.message)
       }

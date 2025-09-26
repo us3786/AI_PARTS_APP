@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Vehicle } from '@/types'
 
+// Global guard to prevent duplicate API calls
+const activeRequests = new Set<string>()
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -73,6 +76,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Check if this vehicle is already being processed
+    const requestKey = `populate-${vehicleId}`
+    if (activeRequests.has(requestKey)) {
+      console.log(`⏳ Vehicle ${vehicleId} is already being populated, skipping duplicate request`)
+      return NextResponse.json({
+        success: false,
+        message: 'Vehicle is already being populated',
+        isDuplicate: true
+      }, { status: 409 })
+    }
+
+    // Mark this vehicle as being processed
+    activeRequests.add(requestKey)
+    console.log(`🚀 Starting population for vehicle ${vehicleId}`)
 
     // Get vehicle information
     const vehicle = await prisma.vehicle.findUnique({
@@ -166,6 +184,11 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+  } finally {
+    // Always remove the request from active requests
+    const requestKey = `populate-${vehicleId}`
+    activeRequests.delete(requestKey)
+    console.log(`✅ Completed population for vehicle ${vehicleId}`)
   }
 }
 

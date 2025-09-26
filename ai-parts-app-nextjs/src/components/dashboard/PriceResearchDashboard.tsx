@@ -158,6 +158,8 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
       if (data.success && data.categories) {
         setAvailableCategories(data.categories)
         console.log(`✅ Loaded ${data.categories.length} categories from existing inventory`)
+      } else if (data.isDuplicate) {
+        console.log('⏳ Categories fetch skipped - vehicle already being processed')
       }
     } catch (error) {
       console.error('Error fetching categories:', error)

@@ -1,12 +1,24 @@
 import { PrismaClient } from '@prisma/client'
 import { PARTS_MASTER_DATA } from './complete-parts-master-data'
+import { config } from 'dotenv'
+
+// Load environment variables from .env.local
+config({ path: '.env.local' })
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting database seeding...')
 
-  // Clear existing parts master data
+  // Clear existing data in dependency order to avoid foreign key constraints
+  console.log('🧹 Clearing existing data...')
+  
+  // Clear dependent tables first
+  await prisma.ebayListing.deleteMany({})
+  await prisma.priceResearch.deleteMany({})
+  await prisma.partsInventory.deleteMany({})
+  
+  // Clear parts master data last
   console.log('🧹 Clearing existing parts master data...')
   await prisma.partsMaster.deleteMany({})
 
