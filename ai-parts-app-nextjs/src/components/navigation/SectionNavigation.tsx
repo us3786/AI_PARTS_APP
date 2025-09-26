@@ -129,15 +129,15 @@ export function SectionNavigation({ vehicleId }: SectionNavigationProps) {
 
   return (
     <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-2 sm:px-4 lg:px-6">
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center justify-between py-4">
+        <div className="hidden lg:flex items-center justify-between py-3 lg:py-4">
           <div className="flex items-center space-x-1">
-            <Car className="h-6 w-6 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">AI Parts App</span>
+            <Car className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
+            <span className="text-base lg:text-lg font-semibold text-gray-900">AI Parts App</span>
           </div>
           
-          <nav className="flex items-center space-x-1">
+          <nav className="flex items-center space-x-1 overflow-x-auto">
             {sections.map((section) => {
               const Icon = section.icon
               const isActive = activeSection === section.id
@@ -149,7 +149,7 @@ export function SectionNavigation({ vehicleId }: SectionNavigationProps) {
                   size="sm"
                   onClick={() => scrollToSection(section.id)}
                   className={`
-                    transition-all duration-200 ease-in-out transform
+                    transition-all duration-200 ease-in-out transform whitespace-nowrap
                     ${isActive 
                       ? 'bg-blue-600 text-white shadow-md scale-105' 
                       : `${section.bgColor} ${section.color} hover:scale-105 hover:shadow-sm`
@@ -158,20 +158,66 @@ export function SectionNavigation({ vehicleId }: SectionNavigationProps) {
                     hover:scale-110 active:scale-95
                   `}
                 >
-                  <Icon className="h-4 w-4 mr-2" />
-                  {section.label}
+                  <Icon className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                  <span className="text-xs lg:text-sm">{section.label}</span>
                 </Button>
               )
             })}
           </nav>
         </div>
 
+        {/* Tablet Navigation */}
+        <div className="hidden md:flex lg:hidden">
+          <div className="flex items-center justify-between py-3 w-full">
+            <div className="flex items-center space-x-1">
+              <Car className="h-5 w-5 text-blue-600" />
+              <span className="text-base font-semibold text-gray-900">AI Parts App</span>
+            </div>
+            
+            <nav className="flex items-center space-x-1 overflow-x-auto">
+              {sections.slice(0, 4).map((section) => {
+                const Icon = section.icon
+                const isActive = activeSection === section.id
+                
+                return (
+                  <Button
+                    key={section.id}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => scrollToSection(section.id)}
+                    className={`
+                      transition-all duration-200 ease-in-out transform whitespace-nowrap
+                      ${isActive 
+                        ? 'bg-blue-600 text-white shadow-md scale-105' 
+                        : `${section.bgColor} ${section.color} hover:scale-105 hover:shadow-sm`
+                      }
+                      hover:scale-110 active:scale-95
+                    `}
+                  >
+                    <Icon className="h-3 w-3 mr-1" />
+                    <span className="text-xs">{section.label}</span>
+                  </Button>
+                )
+              })}
+            </nav>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="transition-all duration-200 hover:scale-110"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         {/* Mobile Navigation */}
         <div className="md:hidden">
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center justify-between py-3">
             <div className="flex items-center space-x-2">
-              <Car className="h-6 w-6 text-blue-600" />
-              <span className="text-lg font-semibold text-gray-900">AI Parts App</span>
+              <Car className="h-5 w-5 text-blue-600" />
+              <span className="text-base font-semibold text-gray-900">AI Parts App</span>
             </div>
             
             <Button
@@ -191,7 +237,7 @@ export function SectionNavigation({ vehicleId }: SectionNavigationProps) {
           {/* Mobile Menu */}
           {isMobileMenuOpen && (
             <div className="pb-4 border-t">
-              <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 {sections.map((section) => {
                   const Icon = section.icon
                   const isActive = activeSection === section.id

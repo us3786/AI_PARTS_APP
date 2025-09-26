@@ -238,31 +238,30 @@ export function VehicleManagement({ onVehicleSelect, className }: VehicleManagem
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
           <Car className="h-5 w-5" />
           Vehicle Management
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 sm:p-6">
         <div className="space-y-4">
           {vehicles.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No vehicles found. Decode a VIN to get started.
+              <p className="text-sm sm:text-base">No vehicles found. Decode a VIN to get started.</p>
             </div>
           ) : (
-            <div className="border rounded-lg">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vehicle</TableHead>
-                    <TableHead>VIN</TableHead>
-                    <TableHead>Parts</TableHead>
-                    <TableHead>Total Value</TableHead>
-                    <TableHead>Avg Price</TableHead>
-                    <TableHead>Duplicates</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Quick Actions</TableHead>
-                    <TableHead>Manage</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Vehicle</TableHead>
+                    <TableHead className="text-xs sm:text-sm hidden sm:table-cell">VIN</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Parts</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Total Value</TableHead>
+                    <TableHead className="text-xs sm:text-sm hidden lg:table-cell">Avg Price</TableHead>
+                    <TableHead className="text-xs sm:text-sm hidden md:table-cell">Duplicates</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -274,57 +273,60 @@ export function VehicleManagement({ onVehicleSelect, className }: VehicleManagem
                       <TableRow key={vehicle.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">
+                            <div className="font-medium text-sm sm:text-base">
                               {vehicle.year} {vehicle.make} {vehicle.model}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs sm:text-sm text-gray-500">
                               Added {new Date(vehicle.createdAt).toLocaleDateString()}
+                            </div>
+                            <div className="sm:hidden text-xs text-gray-400 font-mono mt-1">
+                              VIN: {vehicle.vin.substring(0, 8)}...
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
+                        <TableCell className="font-mono text-xs sm:text-sm hidden sm:table-cell">
                           {vehicle.vin}
                         </TableCell>
                         <TableCell>
                           {stats ? (
                             <div>
-                              <div className="font-medium">{stats.totalParts}</div>
-                              <div className="text-sm text-gray-500">
+                              <div className="font-medium text-sm sm:text-base">{stats.totalParts}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">
                                 {stats.uniqueParts} unique
                               </div>
                             </div>
                           ) : (
-                            <div className="text-gray-400">Loading...</div>
+                            <div className="text-gray-400 text-xs sm:text-sm">Loading...</div>
                           )}
                         </TableCell>
                         <TableCell>
                           {stats ? (
-                            <div className="font-medium text-green-600">
+                            <div className="font-medium text-green-600 text-sm sm:text-base">
                               ${stats.totalValue?.toLocaleString() || 0}
                             </div>
                           ) : (
-                            <div className="text-gray-400">Loading...</div>
+                            <div className="text-gray-400 text-xs sm:text-sm">Loading...</div>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {stats ? (
-                            <div className="font-medium text-blue-600">
+                            <div className="font-medium text-blue-600 text-sm">
                               ${stats.averagePrice || 0}
                             </div>
                           ) : (
-                            <div className="text-gray-400">Loading...</div>
+                            <div className="text-gray-400 text-xs">Loading...</div>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {stats ? (
                             <div>
-                              <div className="font-medium">{stats.duplicateGroups}</div>
-                              <div className="text-sm text-gray-500">
+                              <div className="font-medium text-sm">{stats.duplicateGroups}</div>
+                              <div className="text-xs text-gray-500">
                                 groups
                               </div>
                             </div>
                           ) : (
-                            <div className="text-gray-400">Loading...</div>
+                            <div className="text-gray-400 text-xs">Loading...</div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -343,12 +345,12 @@ export function VehicleManagement({ onVehicleSelect, className }: VehicleManagem
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1 sm:gap-2">
                             <Button
                               variant="default"
                               size="sm"
                               onClick={() => onVehicleSelect?.(vehicle)}
-                              className="bg-blue-500 hover:bg-blue-600 text-white"
+                              className="bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm"
                             >
                               Select Vehicle
                             </Button>
@@ -357,17 +359,19 @@ export function VehicleManagement({ onVehicleSelect, className }: VehicleManagem
                               size="sm"
                               onClick={() => populatePartsAndPrices(vehicle)}
                               disabled={populating === vehicle.id}
-                              className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                              className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 text-xs sm:text-sm"
                             >
                               {populating === vehicle.id ? (
                                 <>
                                   <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                  Populating...
+                                  <span className="hidden sm:inline">Populating...</span>
+                                  <span className="sm:hidden">...</span>
                                 </>
                               ) : (
                                 <>
                                   <RefreshCw className="h-3 w-3 mr-1" />
-                                  Populate Parts & Prices
+                                  <span className="hidden sm:inline">Populate Parts & Prices</span>
+                                  <span className="sm:hidden">Populate</span>
                                 </>
                               )}
                             </Button>

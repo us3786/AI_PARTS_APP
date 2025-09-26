@@ -24,3 +24,64 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mobile-first responsive improvements */
+@media (max-width: 640px) {
+  /* Improve touch targets for mobile */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing for mobile */
+  .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+  
+  /* Improve table scrolling on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better text sizing for mobile */
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  /* Improve form inputs on mobile */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Better spacing for tablets */
+  .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1025px) {
+  /* Better spacing for desktop */
+  .space-y-8 > * + * {
+    margin-top: 2rem;
+  }
+}
+
+/* Improve scrolling performance */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Better focus indicators for accessibility */
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}

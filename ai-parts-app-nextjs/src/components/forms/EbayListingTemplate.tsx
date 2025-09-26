@@ -131,11 +131,14 @@ export function EbayListingTemplate({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           partName,
-          category,
+          make: vehicleInfo.make,
+          model: vehicleInfo.model,
+          year: vehicleInfo.year,
+          engine: vehicleInfo.engine,
+          drivetrain: vehicleInfo.drivetrain,
           condition,
-          vehicleInfo,
-          currentPrice,
-          templateType: 'ebay_listing'
+          category,
+          subCategory: ''
         })
       })
 
@@ -145,10 +148,10 @@ export function EbayListingTemplate({
         const generatedTemplate: ListingTemplate = {
           title: data.title || generateDefaultTitle(),
           description: data.description || generateDefaultDescription(),
-          price: data.suggestedPrice || currentPrice || generateEstimatedPrice(),
+          price: currentPrice || generateEstimatedPrice(),
           condition,
           category,
-          keywords: data.keywords || generateDefaultKeywords(),
+          keywords: data.keywords ? data.keywords.split(', ') : generateDefaultKeywords(),
           images: [],
           vehicleInfo,
           aiGenerated: true,

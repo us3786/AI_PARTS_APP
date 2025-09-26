@@ -813,9 +813,21 @@ export function BulkListingDashboard({ vehicleId, className, refreshTrigger }: B
                           ))
                         }}
                         trigger={
-                          <Button size="sm" variant="outline">
-                            <ImageIcon className="h-3 w-3 mr-1" />
-                            Images
+                          <Button size="sm" variant="outline" className="flex items-center gap-1" title="Manage images">
+                            <ImageIcon className="h-3 w-3" />
+                            <span className="text-xs">Images</span>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
+                              {(() => {
+                                const part = parts.find(p => p.id === item.partId)
+                                if (part) {
+                                  const customImages = Array.isArray(part.customImages) ? part.customImages : []
+                                  const masterImages = Array.isArray(part.partsMaster.images) ? part.partsMaster.images : []
+                                  const totalImages = customImages.length + masterImages.length
+                                  return totalImages
+                                }
+                                return 0
+                              })()}
+                            </span>
                           </Button>
                         }
                       />
@@ -845,11 +857,19 @@ export function BulkListingDashboard({ vehicleId, className, refreshTrigger }: B
                           size="sm"
                           variant="outline"
                           onClick={() => updateListingItem(item.partId, 'editing', !item.editing)}
+                          className="flex items-center gap-1"
+                          title={item.editing ? "Save changes" : "Edit title"}
                         >
                           {item.editing ? (
-                            <Save className="h-3 w-3" />
+                            <>
+                              <Save className="h-3 w-3" />
+                              <span className="text-xs">Save</span>
+                            </>
                           ) : (
-                            <Edit className="h-3 w-3" />
+                            <>
+                              <Edit className="h-3 w-3" />
+                              <span className="text-xs">Edit</span>
+                            </>
                           )}
                         </Button>
                         <Button
@@ -857,11 +877,19 @@ export function BulkListingDashboard({ vehicleId, className, refreshTrigger }: B
                           variant="outline"
                           onClick={() => generateAIDescriptions(false)}
                           disabled={aiGenerating}
+                          className="flex items-center gap-1"
+                          title="Generate AI description"
                         >
                           {aiGenerating ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="text-xs">AI...</span>
+                            </>
                           ) : (
-                            <Bot className="h-3 w-3" />
+                            <>
+                              <Bot className="h-3 w-3" />
+                              <span className="text-xs">AI</span>
+                            </>
                           )}
                         </Button>
                         {vehicle && (
@@ -886,12 +914,63 @@ export function BulkListingDashboard({ vehicleId, className, refreshTrigger }: B
                               updateListingItem(item.partId, 'keywords', template.keywords.join(', '))
                             }}
                             onPreview={(template) => {
-                              console.log('Preview template:', template)
-                              // You can implement a preview modal here
+                              // Create a preview modal
+                              const previewWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
+                              if (previewWindow) {
+                                previewWindow.document.write(`
+                                  <!DOCTYPE html>
+                                  <html>
+                                  <head>
+                                    <title>eBay Listing Preview - ${template.title}</title>
+                                    <style>
+                                      body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+                                      .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                                      .header { border-bottom: 2px solid #0064d2; padding-bottom: 15px; margin-bottom: 20px; }
+                                      .title { font-size: 18px; font-weight: bold; color: #0064d2; margin-bottom: 10px; }
+                                      .price { font-size: 24px; font-weight: bold; color: #e74c3c; margin-bottom: 15px; }
+                                      .description { line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
+                                      .keywords { margin-top: 20px; }
+                                      .keyword { display: inline-block; background: #e9ecef; padding: 4px 8px; margin: 2px; border-radius: 4px; font-size: 12px; }
+                                      .vehicle-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
+                                      .vehicle-info h3 { margin-top: 0; color: #495057; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="container">
+                                      <div class="header">
+                                        <div class="title">${template.title}</div>
+                                        <div class="price">$${template.price.toFixed(2)}</div>
+                                      </div>
+                                      
+                                      <div class="vehicle-info">
+                                        <h3>🚗 Vehicle Compatibility</h3>
+                                        <p><strong>Year:</strong> ${template.vehicleInfo.year}</p>
+                                        <p><strong>Make:</strong> ${template.vehicleInfo.make}</p>
+                                        <p><strong>Model:</strong> ${template.vehicleInfo.model}</p>
+                                        ${template.vehicleInfo.engine ? `<p><strong>Engine:</strong> ${template.vehicleInfo.engine}</p>` : ''}
+                                        ${template.vehicleInfo.transmission ? `<p><strong>Transmission:</strong> ${template.vehicleInfo.transmission}</p>` : ''}
+                                        ${template.vehicleInfo.drivetrain ? `<p><strong>Drivetrain:</strong> ${template.vehicleInfo.drivetrain}</p>` : ''}
+                                      </div>
+                                      
+                                      <div class="description">${template.description}</div>
+                                      
+                                      <div class="keywords">
+                                        <h3>Keywords:</h3>
+                                        ${template.keywords.map(keyword => `<span class="keyword">${keyword}</span>`).join('')}
+                                      </div>
+                                    </div>
+                                  </body>
+                                  </html>
+                                `)
+                                previewWindow.document.close()
+                              } else {
+                                alert('Preview blocked by popup blocker. Please allow popups for this site.')
+                              }
                             }}
                             trigger={
-                              <Button size="sm" variant="outline">
+                              <Button size="sm" variant="outline" className="flex items-center gap-1" title="eBay listing template">
                                 <FileText className="h-3 w-3" />
+                                <span className="text-xs">Template</span>
                               </Button>
                             }
                           />

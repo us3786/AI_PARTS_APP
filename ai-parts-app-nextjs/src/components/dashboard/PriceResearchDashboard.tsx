@@ -67,6 +67,24 @@ interface PriceResearchResult {
     referenceListings: ReferenceListing[]
     anomalyDetected: boolean
     finalMean?: number
+    shippingAnalysis?: {
+      averageShippingCost: number
+      shippingOptions: Array<{
+        service: string
+        cost: number
+        estimatedDays: number
+        carrier: string
+        description: string
+      }>
+      recommendedShipping: {
+        service: string
+        cost: number
+        estimatedDays: number
+        carrier: string
+        description: string
+      }
+      freeShippingThreshold: number
+    }
     priceEvaluation: {
       method: string
       sampleSize: number
@@ -464,7 +482,7 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
         
         data.inventory.forEach((part: any) => {
           if (part.partsMaster && part.partsMaster.images && Array.isArray(part.partsMaster.images)) {
-            // Filter out placeholder images
+            // Filter out placeholder images and normalize format
             const realImages = part.partsMaster.images.filter((img: any) => {
               if (typeof img === 'string') {
                 return !img.includes('picsum.photos') && 
@@ -475,6 +493,9 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                      !img.url.includes('picsum.photos') && 
                      !img.url.includes('placeholder') &&
                      !img.url.includes('via.placeholder')
+            }).map((img: any) => {
+              // Normalize to object format for consistency
+              return typeof img === 'string' ? { url: img } : img
             })
             
             if (realImages.length > 0) {
@@ -560,13 +581,19 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
           })
           
           if (partData.partsMaster?.images && Array.isArray(partData.partsMaster.images)) {
-            // Filter out placeholder images
-            const realImages = partData.partsMaster.images.filter((img: any) => 
-              typeof img === 'object' && 
-              img.url && 
-              !img.url.includes('via.placeholder.com') && 
-              !img.url.includes('placeholder.com')
-            )
+            // Filter out placeholder images and normalize format
+            const realImages = partData.partsMaster.images.filter((img: any) => {
+              if (typeof img === 'string') {
+                return !img.includes('via.placeholder.com') && 
+                       !img.includes('placeholder.com')
+              }
+              return img && img.url && 
+                     !img.url.includes('via.placeholder.com') && 
+                     !img.url.includes('placeholder.com')
+            }).map((img: any) => {
+              // Normalize to object format for consistency
+              return typeof img === 'string' ? { url: img } : img
+            })
             
             if (realImages.length > 0) {
               // Limit to 6 images for eBay compatibility (max 12 total - 6 part images + 6 car pictures)
@@ -1072,6 +1099,16 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
               <ImageIcon className="h-4 w-4 mr-2" />
               Test Images
             </Button>
+
+            <Button
+              onClick={refreshPartImagesFromDatabase}
+              variant="outline"
+              className="transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+              title="Refresh images from database"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh DB Images
+            </Button>
           </div>
 
           {/* Progress */}
@@ -1254,6 +1291,7 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                     <TableHead>Image</TableHead>
                     <TableHead>Market Analysis</TableHead>
                     <TableHead>Recommended Price</TableHead>
+                    <TableHead>Shipping Cost</TableHead>
                     <TableHead>Sample Links</TableHead>
                     <TableHead>Market Trend</TableHead>
                     <TableHead>Confidence</TableHead>
@@ -1273,7 +1311,12 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                           {(() => {
                             // First try to get image from part images (real database images)
                             const partImagesList = partImages[result.partId] || []
-                            const realImage = partImagesList[0]
+                            const realImageData = partImagesList[0]
+                            
+                            // Extract URL from realImage - handle both string and object formats
+                            const realImage = realImageData && typeof realImageData === 'object' 
+                              ? realImageData.url 
+                              : realImageData
                             
                             // Then try reference listings image (but filter out placeholders)
                             const referenceImage = result.marketAnalysis.referenceListings?.[0]?.imageUrl
@@ -1283,13 +1326,12 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                             
                             // Debug logging
                             if (partImagesList.length > 0) {
-                              console.log('🖼️ Found', partImagesList.length, 'real images for', result.partName, ':', partImagesList[0])
+                              console.log('🖼️ Found', partImagesList.length, 'real images for', result.partName, ':', realImageData, '-> extracted URL:', realImage)
                             } else {
                               console.log('❌ No images found for', result.partName, 'in partImages state')
                             }
                             
                             // Use real image if available, otherwise clean reference image, otherwise placeholder
-                            // realImage is a string URL, not an object with url property
                             const imageUrl = realImage || cleanReferenceImage
                             
                             // Debug: Log what imageUrl we're using
@@ -1393,6 +1435,27 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="space-y-1">
+                          {result.marketAnalysis.shippingAnalysis ? (
+                            <>
+                              <div className="text-sm font-medium text-blue-600">
+                                ${result.marketAnalysis.shippingAnalysis.recommendedShipping.cost.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {result.marketAnalysis.shippingAnalysis.recommendedShipping.carrier}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {result.marketAnalysis.shippingAnalysis.recommendedShipping.estimatedDays} day{result.marketAnalysis.shippingAnalysis.recommendedShipping.estimatedDays !== 1 ? 's' : ''}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-gray-400">
+                              Calculating...
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {(() => {
                             const listings = result.marketAnalysis.referenceListings || []
@@ -1414,7 +1477,9 @@ export function PriceResearchDashboard({ vehicleId, className, onPriceResearchCo
                                     size="sm"
                                     onClick={() => window.open(listing.url, '_blank')}
                                     className="text-xs px-2 py-1 h-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300 transition-all duration-200 hover:scale-105"
+                                    title={`${listing.source}: $${listing.price} - ${listing.title}`}
                                   >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
                                     {listing.source}
                                   </Button>
                                 ))}

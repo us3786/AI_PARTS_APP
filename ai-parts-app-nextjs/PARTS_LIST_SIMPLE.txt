@@ -1,0 +1,372 @@
+AI PARTS APP - COMPLETE PARTS LIST
+=====================================
+
+Total Parts: 290+
+Last Updated: September 25, 2025
+
+ENGINE & ENGINE PARTS (25 parts)
+================================
+Engine Long Block Assembly
+Cylinder Head - Left Side (Driver Side)
+Cylinder Head - Right Side (Passenger Side)
+Cylinder Head Gasket Set
+Valve Cover - Left Side (Driver Side)
+Valve Cover - Right Side (Passenger Side)
+Valve Cover Gasket Set
+Oil Pan
+Oil Pump
+Engine Oil Filter
+Oil Pickup Tube
+Oil Pressure Sensor
+Oil Pressure Switch
+Oil Cooler
+Oil Filter Housing
+Timing Cover
+Timing Chain
+Timing Belt
+Timing Chain Tensioner
+Timing Belt Tensioner
+Camshaft Position Sensor - Intake Bank 1
+Camshaft Position Sensor - Exhaust Bank 1
+Camshaft Position Sensor - Intake Bank 2
+Camshaft Position Sensor - Exhaust Bank 2
+Crankshaft Position Sensor
+
+AIR & FUEL DELIVERY (15 parts)
+==============================
+Air Filter Element
+Air Filter Housing
+Mass Air Flow Sensor
+Intake Manifold
+Throttle Body
+Intake Air Temperature Sensor
+PCV Valve
+EGR Valve
+EGR Cooler
+Fuel Injectors (x4)
+Fuel Rail - Left
+Fuel Rail - Right
+High Pressure Fuel Pump
+In-Tank Fuel Pump Module
+Fuel Level Sending Unit
+Fuel Filter
+Fuel Pressure Regulator
+
+IGNITION SYSTEMS (8 parts)
+==========================
+Spark Plug (x4)
+Ignition Coil Pack
+Ignition Control Module
+Distributor Cap
+Distributor Rotor
+Spark Plug Wires
+Knock Sensor - Left
+Knock Sensor - Right
+
+COOLING SYSTEM (8 parts)
+========================
+Water Pump
+Thermostat
+Radiator
+Radiator Fan Motor
+Coolant Temperature Sensor
+Coolant Reservoir
+Heater Hoses
+Radiator Hoses
+
+BRAKE SYSTEM (25 parts)
+=======================
+Front Brake Caliper - Left Side
+Front Brake Caliper - Right Side
+Rear Brake Caliper - Left Side
+Rear Brake Caliper - Right Side
+Front Brake Rotor - Left Side
+Front Brake Rotor - Right Side
+Rear Brake Rotor - Left Side
+Rear Brake Rotor - Right Side
+Front Brake Pad Set - Left Side
+Front Brake Pad Set - Right Side
+Rear Brake Pad Set - Left Side
+Rear Brake Pad Set - Right Side
+Front Brake Line - Left Side (Hard Line)
+Front Brake Line - Right Side (Hard Line)
+Rear Brake Line - Left Side (Hard Line)
+Rear Brake Line - Right Side (Hard Line)
+Front Brake Hose - Left Side (Flexible)
+Front Brake Hose - Right Side (Flexible)
+Rear Brake Hose - Left Side (Flexible)
+Rear Brake Hose - Right Side (Flexible)
+Brake Master Cylinder
+Brake Booster
+ABS Pump Module
+Brake Pedal Assembly
+Brake Proportioning Valve
+Parking Brake Cable - Left
+Parking Brake Cable - Right
+Wheel Speed Sensor - Front Left
+Wheel Speed Sensor - Front Right
+Wheel Speed Sensor - Rear Left
+Wheel Speed Sensor - Rear Right
+
+SUSPENSION & STEERING (35 parts)
+================================
+Front Strut Assembly - Left Side
+Front Strut Assembly - Right Side
+Front Strut Mount - Left Side
+Front Strut Mount - Right Side
+Rear Shock - Left Side
+Rear Shock - Right Side
+Rear Shock Mount - Left Side
+Rear Shock Mount - Right Side
+Coil Spring - Front Left
+Coil Spring - Front Right
+Coil Spring - Rear Left
+Coil Spring - Rear Right
+Upper Control Arm - Front Left
+Upper Control Arm - Front Right
+Lower Control Arm - Front Left
+Lower Control Arm - Front Right
+Rear Control Arm - Left
+Rear Control Arm - Right
+Ball Joint - Front Left Upper
+Ball Joint - Front Right Upper
+Ball Joint - Front Left Lower
+Ball Joint - Front Right Lower
+Front Sway Bar
+Rear Sway Bar
+Front Sway Bar Link - Left
+Front Sway Bar Link - Right
+Rear Sway Bar Link - Left
+Rear Sway Bar Link - Right
+Control Arm Bushing Set - Front
+Control Arm Bushing Set - Rear
+Sway Bar Bushing Set - Front
+Sway Bar Bushing Set - Rear
+Steering Rack Assembly
+Steering Column Assembly
+Power Steering Pump
+Power Steering Reservoir
+Inner Tie Rod - Left Side
+Inner Tie Rod - Right Side
+Outer Tie Rod - Left Side
+Outer Tie Rod - Right Side
+Steering Intermediate Shaft
+Steering Wheel Assembly
+Power Steering Hoses
+Steering Gear Box
+
+EXTERIOR PARTS (25 parts)
+=========================
+Front Door Shell - Left Side (Driver Side)
+Front Door Shell - Right Side (Passenger Side)
+Rear Door Shell - Left Side (Driver Side)
+Rear Door Shell - Right Side (Passenger Side)
+Door Handle Exterior - Front Left
+Door Handle Exterior - Front Right
+Door Handle Exterior - Rear Left
+Door Handle Exterior - Rear Right
+Door Handle Interior - Front Left
+Door Handle Interior - Front Right
+Door Handle Interior - Rear Left
+Door Handle Interior - Rear Right
+Hood Assembly
+Trunk Lid Assembly
+Front Bumper Cover
+Rear Bumper Cover
+Fender - Left
+Fender - Right
+Mirror Assembly - Left
+Mirror Assembly - Right
+Mirror Glass - Left
+Mirror Glass - Right
+Windshield
+Rear Back Glass
+Front Left Window Glass
+Front Right Window Glass
+Rear Left Window Glass
+Rear Right Window Glass
+Quarter Glass - Left
+Quarter Glass - Right
+
+LIGHTING SYSTEM (12 parts)
+==========================
+Headlight Assembly - Left Side
+Headlight Assembly - Right Side
+Taillight Assembly - Left Side
+Taillight Assembly - Right Side
+Fog Light - Left Side
+Fog Light - Right Side
+Turn Signal Light - Front Left
+Turn Signal Light - Front Right
+Turn Signal Light - Rear Left
+Turn Signal Light - Rear Right
+Dome Light
+Map Light
+Glove Box Light
+Trunk Light
+
+INTERIOR PARTS (20 parts)
+=========================
+Front Seat - Driver Side
+Front Seat - Passenger Side
+Rear Bench Seat Bottom
+Rear Bench Seat Back
+Seat Track Motor - Front Left
+Seat Track Motor - Front Right
+Seat Heater - Front Left
+Seat Heater - Front Right
+Seat Airbag - Front Left
+Seat Airbag - Front Right
+Steering Wheel Assembly
+Instrument Cluster Assembly
+Center Console
+HVAC Control Panel
+Infotainment Head Unit
+Dash Assembly
+Glove Box
+Front Left Door Panel
+Front Right Door Panel
+Rear Left Door Panel
+Rear Right Door Panel
+
+ELECTRICAL SYSTEM (25 parts)
+============================
+Alternator Assembly
+Battery
+Battery Cables
+Battery Tray
+Voltage Regulator
+Starter Motor Assembly
+Starter Solenoid
+Engine Control Module
+Body Control Module
+Transmission Control Module
+Cabin Fuse Box
+Engine Bay Fuse Box
+Relay - AC Compressor
+Relay - Cooling Fan Left
+Relay - Cooling Fan Right
+Relay - Fuel Pump
+Relay - Headlights
+Relay - Horn
+Relay - Starter
+Door Lock Actuator - Front Left
+Door Lock Actuator - Front Right
+Door Lock Actuator - Rear Left
+Door Lock Actuator - Rear Right
+Window Motor - Front Left
+Window Motor - Front Right
+Window Motor - Rear Left
+Window Motor - Rear Right
+Window Regulator - Front Left Door
+Window Regulator - Front Right Door
+Window Regulator - Rear Left Door
+Window Regulator - Rear Right Door
+Window Switch - Front Left
+Window Switch - Front Right
+Window Switch - Rear Left
+Window Switch - Rear Right
+
+AIR CONDITIONING (12 parts)
+===========================
+AC Compressor
+AC Condenser
+AC Evaporator Core
+AC Expansion Valve
+AC Receiver/Dryer
+Blower Motor Assembly
+Blower Resistor
+Blend Door Actuator - Defrost
+Blend Door Actuator - Mode
+Blend Door Actuator - Recirculation
+Blend Door Actuator - Temperature
+Cabin Air Filter
+Heater Core
+HVAC Control Panel
+HVAC Housing
+
+SAFETY SYSTEMS (10 parts)
+=========================
+Driver Airbag
+Passenger Airbag
+Seat Airbag - Front Left
+Seat Airbag - Front Right
+Side Curtain Airbag - Left
+Side Curtain Airbag - Right
+Seat Belt - Front Left
+Seat Belt - Front Right
+Seat Belt - Rear Left
+Seat Belt - Rear Right
+
+WHEELS & TIRES (15 parts)
+=========================
+Front Wheel - Left Side
+Front Wheel - Right Side
+Rear Wheel - Left Side
+Rear Wheel - Right Side
+Spare Wheel
+Front Left Tire
+Front Right Tire
+Rear Left Tire
+Rear Right Tire
+Spare Tire
+TPMS Sensor - Front Left
+TPMS Sensor - Front Right
+TPMS Sensor - Rear Left
+TPMS Sensor - Rear Right
+Lug Nut Set
+
+EXHAUST SYSTEM (10 parts)
+=========================
+Catalytic Converter - Bank 1
+Catalytic Converter - Bank 2
+Front Exhaust Pipe
+Mid Exhaust Pipe
+Rear Muffler - Left Side
+Rear Muffler - Right Side
+Oxygen Sensor - Bank 1 Downstream Left
+Oxygen Sensor - Bank 1 Upstream Left
+Oxygen Sensor - Bank 2 Downstream Right
+Oxygen Sensor - Bank 2 Upstream Right
+Front Heat Shield
+Rear Heat Shield
+Exhaust Hanger Brackets (x2)
+
+MISCELLANEOUS (10 parts)
+========================
+Jack Assembly
+Belt Tensioner
+Throttle Position Sensor
+Manifold Absolute Pressure Sensor
+
+SUMMARY BY CATEGORY
+===================
+Suspension & Steering: 35 parts (12.1%)
+Brake System: 25 parts (8.6%)
+Engine & Engine Parts: 25 parts (8.6%)
+Exterior Parts: 25 parts (8.6%)
+Electrical System: 25 parts (8.6%)
+Interior Parts: 20 parts (6.9%)
+Wheels & Tires: 15 parts (5.2%)
+Air & Fuel Delivery: 15 parts (5.2%)
+Air Conditioning: 12 parts (4.1%)
+Lighting System: 12 parts (4.1%)
+Exhaust System: 10 parts (3.4%)
+Safety Systems: 10 parts (3.4%)
+Cooling System: 8 parts (2.8%)
+Ignition Systems: 8 parts (2.8%)
+Miscellaneous: 4 parts (1.4%)
+
+TOTAL: 290+ Parts
+
+USAGE INSTRUCTIONS
+==================
+1. Print this document for offline reference
+2. Use as a checklist when inventorying vehicles
+3. Reference for eBay listings - all parts are eBay-ready
+4. Cross-reference with VIN decoder results
+5. Update regularly as new parts are added to the system
+
+Document Version: 1.0
+Generated: September 25, 2025
+System: AI Parts App - Next.js

@@ -46,12 +46,8 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 No recent data found, triggering background research for ${partName}`)
     
     // Trigger background price research directly (non-blocking)
-    // Use localhost instead of ngrok URL to avoid connection issues
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? (process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000')
-      : 'http://localhost:3000'
-    
-    fetch(`${baseUrl}/api/background/price-research`, {
+    // Use localhost for internal API calls
+    fetch(`http://localhost:3000/api/background/price-research`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -23,7 +23,10 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Globe,
-  Search
+  Search,
+  CheckSquare,
+  Square,
+  Trash
 } from 'lucide-react'
 import { LazyImage } from '@/components/optimization/LazyImage'
 
@@ -52,6 +55,8 @@ export function PartImageGallery({
   const [images, setImages] = useState(initialImages || [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(false)
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load existing images from database when dialog opens
@@ -254,6 +259,73 @@ export function PartImageGallery({
     }
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedImages.size === 0) {
+      setError('Please select images to delete')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedImages.size} selected image(s)?`)) return
+
+    setBulkDeleting(true)
+    setError(null)
+
+    try {
+      const imagesToDelete = Array.from(selectedImages).map(index => images[index])
+      let deletedCount = 0
+
+      for (const image of imagesToDelete) {
+        try {
+          const response = await fetch('/api/parts/upload-image', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ partId, imageUrl: image.url })
+          })
+
+          const data = await response.json()
+          if (data.success) {
+            deletedCount++
+          }
+        } catch (err) {
+          console.error('Error deleting image:', image.url, err)
+        }
+      }
+
+      if (deletedCount > 0) {
+        const updatedImages = images.filter((_, index) => !selectedImages.has(index))
+        setImages(updatedImages)
+        onImagesUpdate(updatedImages)
+        setSelectedImages(new Set())
+        setSuccess(`Successfully deleted ${deletedCount} image(s)!`)
+      } else {
+        setError('Failed to delete selected images')
+      }
+    } catch (err) {
+      setError('Network error during bulk delete')
+      console.error('Bulk delete error:', err)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const toggleImageSelection = (index: number) => {
+    const newSelected = new Set(selectedImages)
+    if (newSelected.has(index)) {
+      newSelected.delete(index)
+    } else {
+      newSelected.add(index)
+    }
+    setSelectedImages(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedImages.size === images.length) {
+      setSelectedImages(new Set())
+    } else {
+      setSelectedImages(new Set(images.map((_, index) => index)))
+    }
+  }
+
   const defaultTrigger = (
     <Button variant="outline" size="sm" className="flex items-center gap-2">
       <ImageIcon className="h-4 w-4" />
@@ -313,6 +385,7 @@ export function PartImageGallery({
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
                       className="flex items-center gap-2"
+                      title="Upload image from your computer"
                     >
                       {uploading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -326,6 +399,7 @@ export function PartImageGallery({
                       disabled={fetching}
                       variant="outline"
                       className="flex items-center gap-2"
+                      title="Search and fetch images from eBay, Google, and other sources"
                     >
                       {fetching ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -343,6 +417,48 @@ export function PartImageGallery({
               </CardContent>
             </Card>
 
+            {/* Bulk Actions Section */}
+            {images.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Manage Images ({images.length} total)</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={toggleSelectAll}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        title={selectedImages.size === images.length ? "Deselect all images" : "Select all images for bulk operations"}
+                      >
+                        {selectedImages.size === images.length ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                        {selectedImages.size === images.length ? 'Deselect All' : 'Select All'}
+                      </Button>
+                      <Button
+                        onClick={handleBulkDelete}
+                        disabled={selectedImages.size === 0 || bulkDeleting}
+                        variant="destructive"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        title="Delete all selected images permanently"
+                      >
+                        {bulkDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash className="h-4 w-4" />
+                        )}
+                        Delete Selected ({selectedImages.size})
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            )}
+
             {/* Images Grid */}
             <div className="flex-1 overflow-y-auto">
               {images.length === 0 ? (
@@ -356,6 +472,16 @@ export function PartImageGallery({
                   {images.map((image, index) => (
                     <Card key={index} className="relative group">
                       <CardContent className="p-2">
+                        {/* Selection Checkbox */}
+                        <div className="absolute top-2 left-2 z-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedImages.has(index)}
+                            onChange={() => toggleImageSelection(index)}
+                            className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                        </div>
+                        
                         <div 
                           className="aspect-square relative cursor-pointer"
                           onClick={() => setSelectedImage(image.url)}
@@ -375,20 +501,33 @@ export function PartImageGallery({
                             priority={index < 3} // Load first 3 images immediately
                           />
                           
+                          {/* Selection Overlay */}
+                          {selectedImages.has(index) && (
+                            <div className="absolute inset-0 bg-blue-500 bg-opacity-30 rounded-md border-2 border-blue-500" />
+                          )}
+                          
                           {/* Overlay Actions */}
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100">
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => setSelectedImage(image.url)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedImage(image.url)
+                                }}
+                                title="View full size image"
                               >
                                 <Eye className="h-3 w-3" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleDeleteImage(image.url)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteImage(image.url)
+                                }}
+                                title="Delete this image"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>

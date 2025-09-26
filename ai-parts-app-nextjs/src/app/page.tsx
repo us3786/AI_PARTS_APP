@@ -127,14 +127,14 @@ export default function Home() {
       <SectionNavigation vehicleId={vehicle?.id} />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
+      <main className="w-full px-2 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className="max-w-none space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Welcome Section */}
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          <div className="text-center px-2">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
               Welcome to AI Parts App
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-gray-600 max-w-4xl mx-auto leading-relaxed">
               Select a saved vehicle to populate parts and prices, or decode a new VIN to get started with your automotive projects.
             </p>
             
@@ -197,18 +197,18 @@ export default function Home() {
           </div>
 
           {/* Vehicle Management Section - Primary Interface */}
-          <div id="vehicle-management" data-section="vehicle-management" className="max-w-6xl mx-auto">
+          <div id="vehicle-management" data-section="vehicle-management" className="w-full">
             <VehicleManagement onVehicleSelect={handleVehicleSelected} />
           </div>
 
           {/* VIN Decoder Section - For adding new vehicles */}
-          <div id="vin-decoder" data-section="vin-decoder" className="max-w-2xl mx-auto">
+          <div id="vin-decoder" data-section="vin-decoder" className="w-full max-w-4xl mx-auto">
             <VINDecoder onVehicleDecoded={handleVehicleDecoded} />
           </div>
 
           {/* Parts Dashboard - Show when vehicle is decoded */}
         {vehicle && (
-          <div className="max-w-7xl mx-auto space-y-8">
+          <div className="w-full space-y-4 sm:space-y-6 lg:space-y-8">
             <div id="parts-inventory" data-section="parts-inventory">
               <EnhancedPartsDashboard vehicleId={vehicle.id} />
             </div>
@@ -241,17 +241,17 @@ export default function Home() {
         )}
 
           {/* eBay Connection Section */}
-          <div className="max-w-2xl mx-auto">
+          <div className="w-full max-w-4xl mx-auto">
             <EbayConnection />
           </div>
 
           {/* Analytics Dashboard */}
-          <div id="analytics" data-section="analytics" className="max-w-6xl mx-auto">
+          <div id="analytics" data-section="analytics" className="w-full">
             <AnalyticsDashboard />
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-8 sm:mt-12">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -297,7 +297,7 @@ export default function Home() {
 
           {/* Vehicle Information Display */}
           {vehicle && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -306,7 +306,7 @@ export default function Home() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-500">Make</label>
                       <p className="text-lg font-semibold">{vehicle.make}</p>
@@ -359,10 +359,10 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <footer className="bg-white border-t mt-8 sm:mt-12 lg:mt-16">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="text-center text-gray-600">
-            <p>&copy; 2025 AI Parts App. Built with Next.js and TypeScript.</p>
+            <p className="text-sm sm:text-base">&copy; 2025 AI Parts App. Built with Next.js and TypeScript.</p>
           </div>
         </div>
       </footer>
