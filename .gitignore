@@ -36,3 +36,5 @@ vehicles.db
 venv/
 .venv/
 tf_env/
+ai-parts-app-nextjs/EBAY_CONFIGURATION.md
+ai-parts-app-nextjs/update-ebay-env.js
